@@ -1,2 +1,2 @@
-ASYNCH_LIBRARY_LOCATION = '/home/ssma/NewAsynchVersion/libs/libasynch_py.so'
+ASYNCH_LIBRARY_LOCATION = '/Users/apensoneault/asynch_python/libs/libasynch_py.so'
 

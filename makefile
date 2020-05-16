@@ -17,10 +17,10 @@ OBJDIR = ./objects
 BINDIR = ./bin
 
 #Header and libraries
-ASYNCH_HEADERS = -I/Groups/IFC/Asynch/
-ASYNCH_LIBSLOC = -L/Groups/IFC/Asynch/libs/ -Wl,-rpath=/Groups/IFC/Asynch/libs/
+ASYNCH_HEADERS = -I/Users/apensoneault/asynch_python
+ASYNCH_LIBSLOC = -L/Users/apensoneault/asynch_python/libs/ -Wl,-rpath=/Users/apensoneault/asynch_python/libs/
 ASYNCH_LIBS = -lasynch
-LIBS = -lm -lpq
+LIBS = -lm -lpq -lz 
 
 #Objects
 SHAREDOBJS = $(addprefix $(OBJDIR)/,rkmethods.o problems.o mathmethods.o riversys.o sort.o comm.o system.o processdata.o partition.o definetype.o misc.o rainfall.o solvers.o io.o \
@@ -40,14 +40,11 @@ ASYNCHLIB:
 ASYNCHLIB_TARGET: $(SHAREDOBJS)
 	$(PCC) $(SHAREDOBJS) $(LIBS) $(FLAGS) $(DBFLAGS) $(OPTFLAGS) -shared -Wl,-soname,libasynch.so -o $(LIBDIR)/libasynch.so
 
-#ASYNCHLIB_PY:
-#	$(MAKE) ASYNCHLIB_PY_TARGET EXTRA_FLAGS="-fPIC -I/usr/include/python2.4/ -L/usr/lib/python2.4/ -lpython2.4"
-
 ASYNCHLIB_PY:
-	$(MAKE) ASYNCHLIB_PY_TARGET EXTRA_FLAGS="-fPIC -I/usr/include/python2.4/"
+	$(MAKE) ASYNCHLIB_PY_TARGET EXTRA_FLAGS="-fPIC -I/usr/include/python2.7/"
 
 ASYNCHLIB_PY_TARGET: $(SHAREDOBJS) $(LIBPYOBJS)
-	$(PCC) $(SHAREDOBJS) $(LIBPYOBJS) $(LIBS) $(EXTRA_FLAGS) -L/usr/lib/python2.4/ -lpython2.4 $(FLAGS) $(DBFLAGS) $(OPTFLAGS) -shared -Wl,-soname,libasynch_py.so -o $(LIBDIR)/libasynch_py.so
+	$(PCC) $(SHAREDOBJS) $(LIBPYOBJS) $(LIBS) $(EXTRA_FLAGS) -L/usr/lib/python2.7/ -lpython2.7 $(FLAGS) $(DBFLAGS) $(OPTFLAGS) -shared -Wl,-soname,libasynch_py.so -o $(LIBDIR)/libasynch_py.so
 
 ASYNCH: $(ASYNCHDISTOBJS)
 	$(PCC) $(ASYNCHDISTOBJS) $(ASYNCH_HEADERS) $(ASYNCH_LIBSLOC) $(ASYNCH_LIBS) $(LIBS) $(FLAGS) $(DBFLAGS) $(OPTFLAGS) -o $(BINDIR)/ASYNCH

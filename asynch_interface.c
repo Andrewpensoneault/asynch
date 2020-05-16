@@ -51,6 +51,7 @@ asynchsolver* Asynch_Init(MPI_Comm comm,int* argc,char** argv[])
 	return asynch;
 }
 
+
 //Creates and loads a custom model
 //Return 1 if there is an error, 0 if everything is ok
 int Asynch_Custom_Model(asynchsolver* asynch,void (*SetParamSizes)(UnivVars*,void*),void (*Convert)(VEC*,unsigned int,void*),void (*Routines)(Link*,unsigned int,unsigned int,unsigned short int,void*),
@@ -640,6 +641,21 @@ void Asynch_Prepare_Peakflow_Output(asynchsolver* asynch)
 
 	if(asynch->GlobalVars->output_data->PreparePeakflowOutput)	asynch->GlobalVars->output_data->PreparePeakflowOutput(asynch->GlobalVars,asynch->peaksave_size);
 }
+
+
+char* Asynch_Create_Local_Output(asynchsolver* asynch,char* additional_out, int output_string_size)
+{
+	//Flush the transfer buffers
+	//!!!! I'm really not sure if this should be here. Seems like either the sends in processdata should use a different tag, or
+	// the flush should unpack data instead of trashing it and be put in the Asynch_Advance function call. !!!!
+        char* textof = (char*) calloc(output_string_size,sizeof(char));
+        int flagof; 
+        Flush_TransData(asynch->my_data);
+	flagof = Interpret_Data(asynch->sys,asynch->GlobalVars,asynch->N,asynch->save_list,asynch->save_size,asynch->my_save_size,asynch->id_to_loc,asynch->assignments,NULL,additional_out,asynch->db_connections[ASYNCH_DB_LOC_HYDRO_OUTPUT],&(asynch->outputfile),textof);
+	return textof;
+}
+
+
 
 //Return 0 means ok, -1 means no data to output
 int Asynch_Create_Output(asynchsolver* asynch,char* additional_out)

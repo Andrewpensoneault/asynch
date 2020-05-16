@@ -168,7 +168,8 @@ class asynchsolver:
 		self.lib.Asynch_Get_Init_Timestamp.restype = c_uint
 		self.lib.Asynch_Copy_Local_OutputUser_Data.restype = None
 		self.lib.Asynch_Set_Size_Local_OutputUser_Data.restype = None
-		self.lib.Asynch_Get_Size_Global_Parameters.restype = c_uint
+	 	self.lib.Asynch_Get_Size_Global_Parameters.restype = c_uint
+         	self.lib.Asynch_Create_Local_Output.restype = c_char_p
 
 		#Functions created specifically for the Python interface
 		self.lib.C_inc_ref.restype = None
@@ -257,6 +258,9 @@ class asynchsolver:
 
 	def Create_Output(self,additional_out):
 		return self.lib.Asynch_Create_Output(self.asynch_obj,additional_out)
+	
+	def Create_Local_Output(self,additional_out,str_length):
+		return self.lib.Asynch_Create_Local_Output(self.asynch_obj,additional_out,str_length)
 
 	def Create_Peakflows_Output(self):
 		return self.lib.Asynch_Create_Peakflows_Output(self.asynch_obj)

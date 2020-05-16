@@ -106,6 +106,7 @@ void Asynch_Prepare_Output(asynchsolver* asynch);
 void Asynch_Prepare_Temp_Files(asynchsolver* asynch);
 void Asynch_Prepare_Peakflow_Output(asynchsolver* asynch);
 int Asynch_Create_Output(asynchsolver* asynch,char* additional_out);
+char* Asynch_Create_Local_Output(asynchsolver* asynch,char* additional_out, int output_string_size);
 int Asynch_Create_Peakflows_Output(asynchsolver* asynch);
 int Asynch_Delete_Temporary_Files(asynchsolver* asynch);
 int Asynch_Write_Current_Step(asynchsolver* asynch);

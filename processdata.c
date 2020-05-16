@@ -673,6 +673,191 @@ int Process_Data(Link** sys,UnivVars* GlobalVars,unsigned int N,unsigned int* sa
 	return 0;
 }
 
+
+
+
+
+
+
+
+
+
+
+int Interpret_Data(Link** sys,UnivVars* GlobalVars,unsigned int N,unsigned int* save_list,unsigned int save_size,unsigned int my_save_size,unsigned int** id_to_loc,int* assignments,char* additional_temp,char* additional_out,ConnData* conninfo,FILE** my_tempfile,char* textof)
+{
+	int i,proc,k;
+	unsigned int j,l,m,loc,id,counter,total_spaces,my_max_disk,max_disk,*space_counter,size = 16;
+	char filename[GlobalVars->string_size],filenamespace[GlobalVars->string_size],outputfilename[GlobalVars->string_size],outputfilename_index[GlobalVars->string_size];
+	char data_storage[size];
+	fpos_t *positions;
+	unsigned int dim = GlobalVars->num_print;
+	FILE *inputfile = NULL,*outputfile = NULL,*outputfile_index = NULL;
+	long long int jump_size;
+    char buffstar[20];
+    int texpoin = 0;
+    int lenof;
+	Link* current;
+
+	//Close the temp file, if open
+	if(my_tempfile && *my_tempfile)
+	{
+		fclose(*my_tempfile);
+		*my_tempfile = NULL;
+	}
+
+	for(i=0;i<size;i++)
+		data_storage[i] = 0;
+
+	//Find total size of a line in the temp files
+	unsigned int line_size = CalcTotalOutputSize(GlobalVars);
+		//Open input files
+		if(my_save_size)
+		{
+			if(!additional_temp)
+				sprintf(filename,"%s",GlobalVars->temp_filename);
+			else
+				sprintf(filename,"%s_%s",GlobalVars->temp_filename,additional_temp);
+			inputfile = fopen(filename,"rb");
+			if(!inputfile)
+			{
+				printf("\n[%i]: Error opening inputfile %s.\n",my_rank,filename);
+				return 2;
+			}
+		}
+
+		//Initializations
+		space_counter = (unsigned int*) calloc(save_size,sizeof(unsigned int));
+		my_max_disk = 0;
+		for(j=0;j<save_size;j++)
+		{
+			loc = find_link_by_idtoloc(save_list[j],id_to_loc,N);
+			current = sys[loc];
+
+			if(assignments[loc] == my_rank)
+			{
+				if(my_max_disk < current->disk_iterations)	my_max_disk = current->disk_iterations;
+				if(my_rank != 0)
+					MPI_Send(&(current->disk_iterations),1,MPI_INT,0,save_list[j],MPI_COMM_WORLD);
+			}
+			else if(my_rank == 0)
+				MPI_Recv(&(current->disk_iterations),1,MPI_INT,assignments[loc],save_list[j],MPI_COMM_WORLD,MPI_STATUS_IGNORE);
+		}
+		MPI_Allreduce(&my_max_disk,&max_disk,1,MPI_UNSIGNED,MPI_MAX,MPI_COMM_WORLD);
+		positions = (fpos_t*) malloc(save_size*sizeof(fpos_t));
+
+		//Find the starting position of each link in each file
+		//Note: We assume the ids in the temp files are ordered by save_list
+		for(j=0;j<save_size;j++)
+		{
+			loc = find_link_by_idtoloc(save_list[j],id_to_loc,N);	//!!!! Ugh... !!!!
+
+			if(assignments[loc] == my_rank)
+			{
+				fseek(inputfile,sizeof(unsigned int),SEEK_CUR);	//Skip ID
+				fread(&total_spaces,sizeof(unsigned int),1,inputfile);	//Grab total spaces for this link
+				fgetpos(inputfile,&(positions[j]));		//Here is the place to start for this link
+				jump_size = (long long int) total_spaces * (long long int) line_size;	//Watch overflows!
+				fseek(inputfile,jump_size,SEEK_CUR);	//Skip to next link
+			}
+		}
+
+		//Make the .csv body
+		if(my_rank == 0)
+		{
+			for(m=0;m<max_disk;m++)
+			{
+				for(i=0;i<save_size;i++)
+				{
+					loc = find_link_by_idtoloc(save_list[i],id_to_loc,N);	//!!!! Ugh... !!!!
+					current = sys[loc];
+
+					if(space_counter[i] > current->disk_iterations)	//This link is done, leave blanks
+						for(k=0;k<dim;k++)	fprintf(outputfile,",");
+					else
+					{
+						if(assignments[loc] == 0)
+						{
+							fsetpos(inputfile,&(positions[i]));
+							for(l=0;l<dim;l++)
+							{
+								fread(data_storage,GlobalVars->output_sizes[l],1,inputfile);
+								lenof = sprintf(buffstar,"%.12e",*(double*)data_storage);
+                                                                strcpy(&textof[texpoin],buffstar);
+                                                                texpoin = texpoin + lenof;
+                                                                strcpy(&textof[texpoin],",");
+                                                                texpoin = texpoin + 1;
+							}
+							fgetpos(inputfile,&(positions[i]));
+							(space_counter[i])++;
+						}
+						else
+						{
+							for(l=0;l<dim;l++)
+							{
+								MPI_Recv(&data_storage,16,MPI_CHAR,assignments[loc],save_list[i],MPI_COMM_WORLD,MPI_STATUS_IGNORE);
+								lenof = sprintf(buffstar,"%.12e",*(double*)data_storage);
+                                                                strcpy(&textof[texpoin],buffstar);
+                                                                texpoin = texpoin + lenof;
+								strcpy(&textof[texpoin],",");
+                                                                texpoin = texpoin + 1;
+							}
+							(space_counter[i])++;
+						}
+					}
+				}
+                                strcpy(&textof[texpoin],"\n");
+                                texpoin = texpoin + 1;
+			}
+		}
+		else
+		{
+			for(m=0;m<max_disk;m++)
+			{
+				for(i=0;i<save_size;i++)
+				{
+					loc = find_link_by_idtoloc(save_list[i],id_to_loc,N);	//!!!! Ugh... !!!!
+					current = sys[loc];
+
+					if(assignments[loc] == my_rank && space_counter[i] <= current->disk_iterations)
+					{
+						fsetpos(inputfile,&(positions[i]));
+						for(l=0;l<dim;l++)
+						{
+							fread(data_storage,GlobalVars->output_sizes[l],1,inputfile);
+							MPI_Send(&data_storage,16,MPI_CHAR,0,save_list[i],MPI_COMM_WORLD);
+						}
+						fgetpos(inputfile,&(positions[i]));
+						(space_counter[i])++;
+					}
+				}
+			}
+		}
+
+		//Clean up
+		if(inputfile)	fclose(inputfile);
+		free(positions);
+		free(space_counter);
+
+
+	MPI_Barrier(MPI_COMM_WORLD);
+
+	//Reopen the tempfile
+	if(my_tempfile && my_save_size > 0)
+	{
+		if(additional_temp != NULL)
+			sprintf(filename,"%s_%s",GlobalVars->temp_filename,additional_temp);
+		else
+			sprintf(filename,"%s",GlobalVars->temp_filename);
+		*my_tempfile = fopen(filename,"r+b");
+		if(!*my_tempfile)
+			printf("[%i]: Error reopening temp file %s.\n",my_rank,filename);
+	}
+
+	return 0;
+}
+
+
+
 void PrepareDatabaseTable(UnivVars* GlobalVars,ConnData* conninfo)
 {
 	unsigned int num_cols,i;

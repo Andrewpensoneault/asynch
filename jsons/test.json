@@ -1,0 +1,36 @@
+{
+	"num_steps": 1,
+	"step_size": 60,
+	"time_window": [1451606400, 1483228800],
+        "init_global_params": [0.33, 0.20, -0.1, 0.02, 2.0425e-6, 0.02, 0.5, 0.10, 0.0, 99.0, 3.0],
+        "init_cond": "/Users/apensoneault/python_assim_smoother/Input/init.ini",
+	"gbl_sample_filename": "/Users/apensoneault/python_assim_smoother/Input/gbl.txt",
+	"rvr_filename": "/Users/apensoneault/python_assim_smoother/Input/south_skunk_2.rvr",
+	"prm_filename": "/Users/apensoneault/python_assim_smoother/Input/south_skunk_2.prm",
+	"rainfall_source": "/Users/apensoneault/python_assim_smoother/Input/south_skunk_2_rainfall.csv",
+	"evap_source": "/Users/apensoneault/python_assim_smoother/Input/evap.mon",
+	"assim_type": "particle",
+	"assim_params": {
+		"ens_num": 50,
+		"likelihood_type": "gaussian",
+		"likelihood_params": {},
+		"eff_samp_threshold": 3,
+		"var_roughing_type": ["per_variable_percent"],
+		"var_roughing_params": [{"percent_error": [0.05, 0.05, 0.05, 0.05]}],
+		"param_roughing_type": ["per_variable_percent"],
+		"param_roughing_params": [{"percent_error": [0.001, 0.001, 0.001, 0.00001, 0, 0.0001, 0.001, 0, 0, 0, 0.001]}]
+	},
+	"var_perturb_type": ["per_variable_percent"],
+	"var_perturb_params": [{"initial_percent_error": [0.20, 0.20, 0.20, 0.20],
+				"percent_error": [0.05, 0.05, 0.05, 0.05]}],
+	"param_perturb_type": ["absolute"],
+	"param_perturb_params": [{"initial_absolute_error": [0.001, 0.001, 0.001, 0.00001, 0, 0.0001, 0.001, 0, 0, 0, 0.001],
+		           	  "absolute_error": [0.001, 0.001, 0.001, 0.00001, 0, 0.0001, 0.001, 0, 0, 0, 0.001]}],
+	"measure_type": ["links"],
+	"measure_params": [{"meas_ids": [272678],
+			    "meas_error_type": ["percent"],
+			    "meas_error_params": [{"percent_error": [0.1]}]}],
+	"output_folder": "/Users/apensoneault/python_assim_smoother/Output/SIR/",
+	"tmp_folder": "/localscratch/Users/apensoneault/SIR/"
+}
+

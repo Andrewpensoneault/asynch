@@ -40,12 +40,16 @@ def create_output_folders(data):
         if not os.path.isdir(output_folder + 'rainfall'):
             raise
 
-def write_sav(data):
+def get_ids(data):
     with open(data['rvr_filename']) as f:
         lines = [line.rstrip('\n')  for line in f if line != '']
     lines = list(filter(None, lines))
     lines = list(map(int,lines[1::2]))
     filename = data['tmp_folder'] + 'asynch.sav'
+    return lines
+
+def write_sav(data):
+    lines = get_ids(data)
     with open(filename, 'w') as filehandle:
         for l in lines:
             filehandle.write('%d\n' % l)

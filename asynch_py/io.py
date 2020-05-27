@@ -45,10 +45,10 @@ def get_ids(data):
         lines = [line.rstrip('\n')  for line in f if line != '']
     lines = list(filter(None, lines))
     lines = list(map(int,lines[1::2]))
-    filename = data['tmp_folder'] + 'asynch.sav'
     return lines
 
 def write_sav(data):
+    filename = data['tmp_folder'] + 'asynch.sav'
     lines = get_ids(data)
     with open(filename, 'w') as filehandle:
         for l in lines:

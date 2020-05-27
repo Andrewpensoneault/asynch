@@ -1,15 +1,15 @@
-from asynch_py.asynch_interface import asynchsolver
+from asynch_py.asynch_interface_parallel import asynchsolver
 import sys
 from mpi4py import MPI
 import numpy as np
-from asynch_py.io import get_asynch_params, get_forcings, create_output_folders, write_sav, read_ini, create_ini, make_forcing_files, create_gbl, remove_files, write_results 
+from asynch_py.io import get_asynch_params, get_forcings, create_output_folders, write_sav, read_ini, create_ini, make_forcing_files, create_gbl, remove_files, write_results, get_ids 
 import datetime
 import time as ttt
 
 comm = MPI.COMM_WORLD
-np = comm.Get_size()
+nproc = comm.Get_size()
 my_rank = comm.Get_rank()
-
+import pdb; pdb.set_trace()
 buffer_size = 100 #size of one sprintf entry for output
 ## Parse command line arguments
 numargs = len(sys.argv)
@@ -17,8 +17,8 @@ if numargs != 2:
 	print 'Need an input .json file'
 	sys.exit(1)
 
-asynch_data['id_list'] = get_ids(asynch_data)
 asynch_data = get_asynch_params(sys.argv[1])
+asynch_data['id_list'] = get_ids(asynch_data)
 link_num = asynch_data['link_num']
 num_steps = asynch_data['num_steps']
 link_var_num = asynch_data['link_var_num']
@@ -31,12 +31,12 @@ time_step = asynch_data['step_size']
 num_links = len(asynch_data['id_list'])
 id_list = asynch_data['id_list']
 
-my_ens_num = int(np.ceil(num_steps/np))
+my_ens_num = int(np.ceil(float(ens_num)/float(nproc)))
 ens_list = np.array([i for i in range(my_rank*my_ens_num,(my_rank+1)*my_ens_num)])
 
 large_string_len = buffer_size*num_steps*link_num*link_var_num
 
-if my_rank == 0
+if my_rank == 0:
     write_sav(asynch_data)
     create_output_folders(asynch_data)
     forcing_data = get_forcings(asynch_data)
@@ -71,6 +71,7 @@ while current_time<time_stop:
         print('Date: ' + datetime.datetime.utcfromtimestamp(current_time).strftime('%Y-%m-%d %H:%M:%S') + ', Time to run: ' + str(t1-t0) + ' seconds')
         t0 = ttt.time()
         make_forcing_files(forcing_data, asynch_data, current_time)
+    comm.Barrier()
     for n in ens_list:
         if n < ens_num:
             n_idx = np.nonzero(ens_list==n)[0][0]
@@ -115,8 +116,9 @@ while current_time<time_stop:
     sendvbuf = state.flatten()
     recvbuf = None
     if my_rank == 0:
-        recvbuff = np.empty((np,(link_num*num_step*link_var_num+param_num)*my_ens_num))
+        recvbuff = np.empty((nproc,(link_num*num_step*link_var_num+param_num)*my_ens_num))
     com.Gather(sendvbuf, recvbuf, root=0)
+    #transform into something usable
     if my_rank == 0:    
         for pert in asynch_data['var_perturb_type']:
             state[:-num_param,:] = pert.perturb(state[:-num_param,:])

@@ -47,7 +47,7 @@ io* BuildIO(UnivVars* GlobalVars)
 //Reads a .dbc file and creates a corresponding database connection.
 //This does NOT connect to the database.
 //Returns NULL if there was an error.
-ConnData* ReadDBC(char* filename,unsigned int string_size)
+ConnData* ReadDBC(char* filename,unsigned int string_size, MPI_Comm comm)
 {
 	unsigned int i,j,errorcode = 0;
 	ConnData* conninfo = NULL;
@@ -128,23 +128,23 @@ ConnData* ReadDBC(char* filename,unsigned int string_size)
 
 	//Check if an error occurred
 	finish:
-	MPI_Bcast(&errorcode,1,MPI_UNSIGNED,0,MPI_COMM_WORLD);
+	MPI_Bcast(&errorcode,1,MPI_UNSIGNED,0,comm);
 
 	//Transfer info from .dbc file
 	if(!errorcode)
 	{
-		MPI_Bcast(&j,1,MPI_UNSIGNED,0,MPI_COMM_WORLD);
-		MPI_Bcast(connectstring,j,MPI_CHAR,0,MPI_COMM_WORLD);
+		MPI_Bcast(&j,1,MPI_UNSIGNED,0,comm);
+		MPI_Bcast(connectstring,j,MPI_CHAR,0,comm);
 		if(my_rank != 0)
 			conninfo = CreateConnData(connectstring);
-		MPI_Bcast(&(conninfo->num_queries),1,MPI_UNSIGNED,0,MPI_COMM_WORLD);
+		MPI_Bcast(&(conninfo->num_queries),1,MPI_UNSIGNED,0,comm);
 		if(my_rank == 0)
 		{
 			for(i=0;i<conninfo->num_queries;i++)
 			{
 				j = strlen(conninfo->queries[i]) + 1;
-				MPI_Bcast(&j,1,MPI_UNSIGNED,0,MPI_COMM_WORLD);
-				MPI_Bcast(conninfo->queries[i],j,MPI_CHAR,0,MPI_COMM_WORLD);
+				MPI_Bcast(&j,1,MPI_UNSIGNED,0,comm);
+				MPI_Bcast(conninfo->queries[i],j,MPI_CHAR,0,comm);
 			}
 		}
 		else
@@ -153,8 +153,8 @@ ConnData* ReadDBC(char* filename,unsigned int string_size)
 			for(i=0;i<conninfo->num_queries;i++)
 			{
 				conninfo->queries[i] = (char*) malloc(ASYNCH_MAX_QUERY_SIZE*sizeof(char));
-				MPI_Bcast(&j,1,MPI_UNSIGNED,0,MPI_COMM_WORLD);
-				MPI_Bcast(conninfo->queries[i],j,MPI_CHAR,0,MPI_COMM_WORLD);
+				MPI_Bcast(&j,1,MPI_UNSIGNED,0,comm);
+				MPI_Bcast(conninfo->queries[i],j,MPI_CHAR,0,comm);
 			}
 		}
 

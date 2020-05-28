@@ -1,6 +1,6 @@
 #include "solvers.h"
 
-void AsynchSolver(Link** sys,unsigned int N,unsigned int* my_sys,unsigned int my_N,UnivVars* GlobalVars,int* assignments,short int* getting,unsigned int* res_list,unsigned int res_size,unsigned int** id_to_loc,TempStorage* workspace,Forcing** forcings,ConnData** db_connections,TransData* my_data,short int print_flag,FILE* outputfile)
+void AsynchSolver(Link** sys,unsigned int N,unsigned int* my_sys,unsigned int my_N,UnivVars* GlobalVars,int* assignments,short int* getting,unsigned int* res_list,unsigned int res_size,unsigned int** id_to_loc,TempStorage* workspace,Forcing** forcings,ConnData** db_connections,TransData* my_data,short int print_flag,FILE* outputfile, MPI_Comm comm)
 {
 	unsigned int i,k;
 	
@@ -76,12 +76,12 @@ void AsynchSolver(Link** sys,unsigned int N,unsigned int* my_sys,unsigned int my
 
 		//Set a new step size
 		//CalculateInitialStepSizes(sys,N,my_sys,my_N,assignments,getting,res_list,res_size,id_to_loc,GlobalVars,forcings,workspace,db_connections);
-		Exchange_InitState_At_Forced(sys,N,assignments,getting,res_list,res_size,id_to_loc,GlobalVars);
+		Exchange_InitState_At_Forced(sys,N,assignments,getting,res_list,res_size,id_to_loc,GlobalVars,comm);
 		for(i=0;i<my_N;i++)
 			sys[my_sys[i]]->h = InitialStepSize(sys[my_sys[i]]->last_t,sys[my_sys[i]],GlobalVars,workspace);
 
 		//This might be needed. Sometimes some procs get stuck in Finish for communication, but makes runs much slower.
-		MPI_Barrier(MPI_COMM_WORLD);
+		MPI_Barrier(comm);
 
 		if(sys[my_sys[0]]->last_t < GlobalVars->maxtime)
 		while(alldone < my_N)
@@ -104,7 +104,7 @@ void AsynchSolver(Link** sys,unsigned int N,unsigned int* my_sys,unsigned int my
 			if(around >= two_my_N)
 			{
 				//Communicate with other processes
-				Transfer_Data(my_data,sys,assignments,GlobalVars);
+				Transfer_Data(my_data,sys,assignments,GlobalVars,comm);
 				around = 0;
 				curr_idx = 0;
 			}
@@ -266,11 +266,11 @@ void AsynchSolver(Link** sys,unsigned int N,unsigned int* my_sys,unsigned int my
 			break;
 		}
 
-		Transfer_Data_Finish(my_data,sys,assignments,GlobalVars);
+		Transfer_Data_Finish(my_data,sys,assignments,GlobalVars,comm);
 
 		//Ensure all data is received !!!! This is sloppy. Transfer_Data_Finish should handle this. !!!!
-		MPI_Barrier(MPI_COMM_WORLD);
-		Transfer_Data_Finish(my_data,sys,assignments,GlobalVars);
+		MPI_Barrier(comm);
+		Transfer_Data_Finish(my_data,sys,assignments,GlobalVars,comm);
 
 		//if((rain_flag == 2 || rain_flag == 3) && my_rank == 0)
 //		if(my_rank == 0)

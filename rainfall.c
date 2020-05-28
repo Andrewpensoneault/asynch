@@ -18,7 +18,7 @@
 //int** id_to_loc (set by this method): Will be an array with N rows and 2 columns, sorted by first col. First col is a link id and second is
 //				the location of the id in sys.
 //unsigned int max_files: The maximum number of files to be read.
-int Create_Rain_Data_Par(Link** sys,unsigned int N,unsigned int my_N,UnivVars* GlobalVars,unsigned int* my_sys,int* assignments,char strfilename[],unsigned int first,unsigned int last,double t_0,double increment,Forcing* forcing,unsigned int** id_to_loc,unsigned int max_files,unsigned int forcing_idx)
+int Create_Rain_Data_Par(Link** sys,unsigned int N,unsigned int my_N,UnivVars* GlobalVars,unsigned int* my_sys,int* assignments,char strfilename[],unsigned int first,unsigned int last,double t_0,double increment,Forcing* forcing,unsigned int** id_to_loc,unsigned int max_files,unsigned int forcing_idx, MPI_Comm comm )
 {
 	unsigned int i,j,curr_idx;
 	unsigned int k;
@@ -148,7 +148,7 @@ int Create_Rain_Data_Par(Link** sys,unsigned int N,unsigned int my_N,UnivVars* G
 //int** id_to_loc (set by this method): Will be an array with N rows and 2 columns, sorted by first col. First col is a link id and second is
 //				the location of the id in sys.
 //unsigned int max_files: The maximum number of files to be read.
-int Create_Rain_Data_GZ(Link** sys,unsigned int N,unsigned int my_N,UnivVars* GlobalVars,unsigned int* my_sys,int* assignments,char strfilename[],unsigned int first,unsigned int last,double t_0,double increment,Forcing* forcing,unsigned int** id_to_loc,unsigned int max_files,unsigned int forcing_idx)
+int Create_Rain_Data_GZ(Link** sys,unsigned int N,unsigned int my_N,UnivVars* GlobalVars,unsigned int* my_sys,int* assignments,char strfilename[],unsigned int first,unsigned int last,double t_0,double increment,Forcing* forcing,unsigned int** id_to_loc,unsigned int max_files,unsigned int forcing_idx, MPI_Comm comm)
 {
 	unsigned int i,j,curr_idx;
 	unsigned int k;
@@ -180,7 +180,7 @@ int Create_Rain_Data_GZ(Link** sys,unsigned int N,unsigned int my_N,UnivVars* Gl
 	}
 
 	//Read through the files.
-	MPI_Barrier(MPI_COMM_WORLD);
+	MPI_Barrier(comm);
 	for(k=0;k<numfiles;k++)
 	{
 		if(my_rank == 0)
@@ -191,7 +191,7 @@ int Create_Rain_Data_GZ(Link** sys,unsigned int N,unsigned int my_N,UnivVars* Gl
 			if(!compfile)
 			{
 				printf("[%i]: Error opening file %s.\n",my_rank,filename);
-				MPI_Abort(MPI_COMM_WORLD,1);
+				MPI_Abort(comm,1);
 			}
 
 			sprintf(filename,"%s%i_%i",strfilename,first+k,my_rank);
@@ -228,9 +228,9 @@ int Create_Rain_Data_GZ(Link** sys,unsigned int N,unsigned int my_N,UnivVars* Gl
 				else	//Send it to the correct proc
 				{
 					int pos = 0;
-					MPI_Pack(&curr_idx,1,MPI_INT,transferbuffer,buffer_size,&pos,MPI_COMM_WORLD);
-					MPI_Pack(&rainfall_buffer,1,MPI_FLOAT,transferbuffer,buffer_size,&pos,MPI_COMM_WORLD);
-					MPI_Send(transferbuffer,buffer_size,MPI_PACKED,assignments[curr_idx],N,MPI_COMM_WORLD);		//N = tag, as typical communication should not send this many links.
+					MPI_Pack(&curr_idx,1,MPI_INT,transferbuffer,buffer_size,&pos,comm);
+					MPI_Pack(&rainfall_buffer,1,MPI_FLOAT,transferbuffer,buffer_size,&pos,comm);
+					MPI_Send(transferbuffer,buffer_size,MPI_PACKED,assignments[curr_idx],N,comm);		//N = tag, as typical communication should not send this many links.
 				}
 			}
 
@@ -243,9 +243,9 @@ int Create_Rain_Data_GZ(Link** sys,unsigned int N,unsigned int my_N,UnivVars* Gl
 			for(i=0;i<my_N;i++)
 			{
 				int pos = 0;
-				MPI_Recv(transferbuffer,buffer_size,MPI_PACKED,0,N,MPI_COMM_WORLD,MPI_STATUS_IGNORE);
-				MPI_Unpack(transferbuffer,buffer_size,&pos,&curr_idx,1,MPI_INT,MPI_COMM_WORLD);
-				MPI_Unpack(transferbuffer,buffer_size,&pos,&rainfall_buffer,1,MPI_FLOAT,MPI_COMM_WORLD);
+				MPI_Recv(transferbuffer,buffer_size,MPI_PACKED,0,N,comm,MPI_STATUS_IGNORE);
+				MPI_Unpack(transferbuffer,buffer_size,&pos,&curr_idx,1,MPI_INT,comm);
+				MPI_Unpack(transferbuffer,buffer_size,&pos,&rainfall_buffer,1,MPI_FLOAT,comm);
 
 				//This assumes the files have a different endianness from the system
 				holder = *(unsigned int*) &rainfall_buffer;	//Pointers are fun!
@@ -323,7 +323,7 @@ int Create_Rain_Data_GZ(Link** sys,unsigned int N,unsigned int my_N,UnivVars* Gl
 //int** id_to_loc (set by this method): Will be an array with N rows and 2 columns, sorted by first col. First col is a link id and second is
 //				the location of the id in sys.
 //unsigned int max_files: The maximum number of files to be read.
-int Create_Rain_Data_Grid(Link** sys,unsigned int N,unsigned int my_N,UnivVars* GlobalVars,unsigned int* my_sys,int* assignments,char strfilename[],unsigned int first,unsigned int last,double t_0,double increment,Forcing* forcing,unsigned int** id_to_loc,unsigned int max_files,unsigned int forcing_idx)
+int Create_Rain_Data_Grid(Link** sys,unsigned int N,unsigned int my_N,UnivVars* GlobalVars,unsigned int* my_sys,int* assignments,char strfilename[],unsigned int first,unsigned int last,double t_0,double increment,Forcing* forcing,unsigned int** id_to_loc,unsigned int max_files,unsigned int forcing_idx, MPI_Comm comm)
 {
 	unsigned int i,j,curr_idx,k,holder,endianness,cell;
 	short unsigned int intensity;
@@ -370,7 +370,7 @@ int Create_Rain_Data_Grid(Link** sys,unsigned int N,unsigned int my_N,UnivVars* 
 				else
 				{
 					printf("Error: Cannot read endianness flag in binary file %s.\n",filename);
-					MPI_Abort(MPI_COMM_WORLD,1);
+					MPI_Abort(comm,1);
 				}
 
 				//Read file
@@ -431,7 +431,7 @@ int Create_Rain_Data_Grid(Link** sys,unsigned int N,unsigned int my_N,UnivVars* 
 			}
 		}
 
-		MPI_Bcast(forcing->intensities,forcing->num_cells,MPI_FLOAT,0,MPI_COMM_WORLD);
+		MPI_Bcast(forcing->intensities,forcing->num_cells,MPI_FLOAT,0,comm);
 
 		//Load the data
 		for(cell=0;cell<forcing->num_cells;cell++)
@@ -505,7 +505,7 @@ int Create_Rain_Data_Grid(Link** sys,unsigned int N,unsigned int my_N,UnivVars* 
 //int** id_to_loc (set by this method): Will be an array with N rows and 2 columns, sorted by first col. First col is a link id and second is
 //				the location of the id in sys.
 //unsigned int max_files: The maximum number of files to be read.
-int Create_Rain_Database(Link** sys,unsigned int N,unsigned int my_N,UnivVars* GlobalVars,unsigned int* my_sys,int* assignments,ConnData *conninfo,unsigned int first,unsigned int last,Forcing* forcing,unsigned int** id_to_loc,double maxtime,unsigned int forcing_idx)
+int Create_Rain_Database(Link** sys,unsigned int N,unsigned int my_N,UnivVars* GlobalVars,unsigned int* my_sys,int* assignments,ConnData *conninfo,unsigned int first,unsigned int last,Forcing* forcing,unsigned int** id_to_loc,double maxtime,unsigned int forcing_idx, MPI_Comm comm)
 {
 	unsigned int i,j,k,curr_idx,tuple_count;
 	Link* current;
@@ -567,7 +567,7 @@ printf("Received %u intensities.\n",tuple_count);
 		DisconnectPGDB(conninfo);
 
 		//Allocate space
-		MPI_Bcast(&tuple_count,1,MPI_INT,0,MPI_COMM_WORLD);
+		MPI_Bcast(&tuple_count,1,MPI_INT,0,comm);
 		db_unix_time = malloc(tuple_count*sizeof(unsigned int));
 		db_rain_intens = malloc(tuple_count*sizeof(float));
 		db_link_id = malloc(tuple_count*sizeof(unsigned int));
@@ -581,9 +581,9 @@ printf("Received %u intensities.\n",tuple_count);
 		}
 
 		//Broadcast the data
-		MPI_Bcast(db_unix_time,tuple_count,MPI_INT,0,MPI_COMM_WORLD);
-		MPI_Bcast(db_rain_intens,tuple_count,MPI_FLOAT,0,MPI_COMM_WORLD);
-		MPI_Bcast(db_link_id,tuple_count,MPI_INT,0,MPI_COMM_WORLD);
+		MPI_Bcast(db_unix_time,tuple_count,MPI_INT,0,comm);
+		MPI_Bcast(db_rain_intens,tuple_count,MPI_FLOAT,0,comm);
+		MPI_Bcast(db_link_id,tuple_count,MPI_INT,0,comm);
 
 		//Clean up
 		PQclear(res);
@@ -591,18 +591,18 @@ printf("Received %u intensities.\n",tuple_count);
 	else
 	{
 		//Allocate space
-		MPI_Bcast(&tuple_count,1,MPI_INT,0,MPI_COMM_WORLD);
+		MPI_Bcast(&tuple_count,1,MPI_INT,0,comm);
 		db_unix_time = malloc(tuple_count*sizeof(unsigned int));
 		db_rain_intens = malloc(tuple_count*sizeof(float));
 		db_link_id = malloc(tuple_count*sizeof(unsigned int));
 
 		//Receive the data
-		MPI_Bcast(db_unix_time,tuple_count,MPI_INT,0,MPI_COMM_WORLD);
-		MPI_Bcast(db_rain_intens,tuple_count,MPI_FLOAT,0,MPI_COMM_WORLD);
-		MPI_Bcast(db_link_id,tuple_count,MPI_INT,0,MPI_COMM_WORLD);
+		MPI_Bcast(db_unix_time,tuple_count,MPI_INT,0,comm);
+		MPI_Bcast(db_rain_intens,tuple_count,MPI_FLOAT,0,comm);
+		MPI_Bcast(db_link_id,tuple_count,MPI_INT,0,comm);
 	}
 
-	MPI_Barrier(MPI_COMM_WORLD);
+	MPI_Barrier(comm);
 
 //double stop = time(NULL);
 //if(my_rank == 0)	printf("Total time to get rain: %f\n%u %u\n",difftime(stop,start),first,last);
@@ -754,7 +754,7 @@ printf("!!!! i = %i k = %i received = %i unix_time = %i raindb_start = %i\n",i,k
 //int** id_to_loc (set by this method): Will be an array with N rows and 2 columns, sorted by first col. First col is a link id and second is
 //				the location of the id in sys.
 //unsigned int max_files: The maximum number of files to be read.
-int Create_Rain_Database_Irregular(Link** sys,unsigned int N,unsigned int my_N,UnivVars* GlobalVars,unsigned int* my_sys,int* assignments,ConnData *conninfo,unsigned int first,unsigned int last,Forcing* forcing,unsigned int** id_to_loc,double maxtime,unsigned int forcing_idx)
+int Create_Rain_Database_Irregular(Link** sys,unsigned int N,unsigned int my_N,UnivVars* GlobalVars,unsigned int* my_sys,int* assignments,ConnData *conninfo,unsigned int first,unsigned int last,Forcing* forcing,unsigned int** id_to_loc,double maxtime,unsigned int forcing_idx, MPI_Comm comm)
 {
 	unsigned int i,j,k,curr_idx,tuple_count,current_timestamp;
 	Link* current;
@@ -803,8 +803,8 @@ int Create_Rain_Database_Irregular(Link** sys,unsigned int N,unsigned int my_N,U
 		actual_timestamps = (unsigned int*) malloc(num_actual_timestamps*sizeof(unsigned int));
 		for(i=0;i<num_actual_timestamps;i++)
 			actual_timestamps[i] = atoi(PQgetvalue(res,i,0));
-		MPI_Bcast(&num_actual_timestamps,1,MPI_UNSIGNED,0,MPI_COMM_WORLD);
-		MPI_Bcast(actual_timestamps,num_actual_timestamps,MPI_UNSIGNED,0,MPI_COMM_WORLD);
+		MPI_Bcast(&num_actual_timestamps,1,MPI_UNSIGNED,0,comm);
+		MPI_Bcast(actual_timestamps,num_actual_timestamps,MPI_UNSIGNED,0,comm);
 		last = actual_timestamps[num_actual_timestamps-1];
 		PQclear(res);
 
@@ -827,7 +827,7 @@ printf("Received %u intensities.\n",tuple_count);
 		DisconnectPGDB(conninfo);
 
 		//Allocate space
-		MPI_Bcast(&tuple_count,1,MPI_INT,0,MPI_COMM_WORLD);
+		MPI_Bcast(&tuple_count,1,MPI_INT,0,comm);
 		db_unix_time = malloc(tuple_count*sizeof(unsigned int));
 		db_rain_intens = malloc(tuple_count*sizeof(float));
 		db_link_id = malloc(tuple_count*sizeof(unsigned int));
@@ -841,33 +841,33 @@ printf("Received %u intensities.\n",tuple_count);
 		}
 
 		//Broadcast the data
-		MPI_Bcast(db_unix_time,tuple_count,MPI_INT,0,MPI_COMM_WORLD);
-		MPI_Bcast(db_rain_intens,tuple_count,MPI_FLOAT,0,MPI_COMM_WORLD);
-		MPI_Bcast(db_link_id,tuple_count,MPI_INT,0,MPI_COMM_WORLD);
+		MPI_Bcast(db_unix_time,tuple_count,MPI_INT,0,comm);
+		MPI_Bcast(db_rain_intens,tuple_count,MPI_FLOAT,0,comm);
+		MPI_Bcast(db_link_id,tuple_count,MPI_INT,0,comm);
 
 		//Clean up
 		PQclear(res);
 	}
 	else
 	{
-		MPI_Bcast(&num_actual_timestamps,1,MPI_UNSIGNED,0,MPI_COMM_WORLD);
+		MPI_Bcast(&num_actual_timestamps,1,MPI_UNSIGNED,0,comm);
 		actual_timestamps = (unsigned int*) malloc(num_actual_timestamps*sizeof(unsigned int));
-		MPI_Bcast(actual_timestamps,num_actual_timestamps,MPI_UNSIGNED,0,MPI_COMM_WORLD);
+		MPI_Bcast(actual_timestamps,num_actual_timestamps,MPI_UNSIGNED,0,comm);
 		last = actual_timestamps[num_actual_timestamps-1];
 
 		//Allocate space
-		MPI_Bcast(&tuple_count,1,MPI_INT,0,MPI_COMM_WORLD);
+		MPI_Bcast(&tuple_count,1,MPI_INT,0,comm);
 		db_unix_time = malloc(tuple_count*sizeof(unsigned int));
 		db_rain_intens = malloc(tuple_count*sizeof(float));
 		db_link_id = malloc(tuple_count*sizeof(unsigned int));
 
 		//Receive the data
-		MPI_Bcast(db_unix_time,tuple_count,MPI_INT,0,MPI_COMM_WORLD);
-		MPI_Bcast(db_rain_intens,tuple_count,MPI_FLOAT,0,MPI_COMM_WORLD);
-		MPI_Bcast(db_link_id,tuple_count,MPI_INT,0,MPI_COMM_WORLD);
+		MPI_Bcast(db_unix_time,tuple_count,MPI_INT,0,comm);
+		MPI_Bcast(db_rain_intens,tuple_count,MPI_FLOAT,0,comm);
+		MPI_Bcast(db_link_id,tuple_count,MPI_INT,0,comm);
 	}
 
-	MPI_Barrier(MPI_COMM_WORLD);
+	MPI_Barrier(comm);
 
 //double stop = time(NULL);
 //if(my_rank == 0)	printf("Total time to get rain: %f\n%u %u\n",difftime(stop,start),first,last);
@@ -1051,7 +1051,7 @@ printf("+++++++++\n");
 
 
 //Sets the rain data of link current to 0 for all times.
-void SetRain0(Link** sys,unsigned int my_N,double maxtime,unsigned int* my_sys,UnivVars* GlobalVars,Forcing* forcing,unsigned int forcing_idx)
+void SetRain0(Link** sys,unsigned int my_N,double maxtime,unsigned int* my_sys,UnivVars* GlobalVars,Forcing* forcing,unsigned int forcing_idx, MPI_Comm comm)
 {
 	unsigned int i,j,k;
 	Link* current;
@@ -1091,7 +1091,7 @@ void SetRain0(Link** sys,unsigned int my_N,double maxtime,unsigned int* my_sys,U
 
 //Sets a forcing based on monthly data.
 //Assumes the rates are already set.
-double CreateForcing_Monthly(Link** sys,unsigned int my_N,unsigned int* my_sys,UnivVars* GlobalVars,ForcingData* GlobalForcing,unsigned int forcing_idx,struct tm *current_time,time_t first_time,time_t last_time,double t_0)
+double CreateForcing_Monthly(Link** sys,unsigned int my_N,unsigned int* my_sys,UnivVars* GlobalVars,ForcingData* GlobalForcing,unsigned int forcing_idx,struct tm *current_time,time_t first_time,time_t last_time,double t_0, MPI_Comm comm)
 {
 	unsigned int j,k,num_months = 12;
 	int i;
@@ -1106,7 +1106,7 @@ double CreateForcing_Monthly(Link** sys,unsigned int my_N,unsigned int* my_sys,U
 	if(month_0 < 0 || month_0 > num_months)
 	{
 		printf("[%i]: Error: Bad month %i.\n",my_rank,month_0);
-		MPI_Abort(MPI_COMM_WORLD,1);
+		MPI_Abort(comm,1);
 	}
 
 	//Set the (local) times for the current month and previous months

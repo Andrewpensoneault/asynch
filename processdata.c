@@ -12,7 +12,7 @@
 //1 means a database related error.
 //2 means a file system related error.
 //!!!! Is additional_temp needed? !!!!
-int Process_Data(Link** sys,UnivVars* GlobalVars,unsigned int N,unsigned int* save_list,unsigned int save_size,unsigned int my_save_size,unsigned int** id_to_loc,int* assignments,char* additional_temp,char* additional_out,ConnData* conninfo,FILE** my_tempfile)
+int Process_Data(Link** sys,UnivVars* GlobalVars,unsigned int N,unsigned int* save_list,unsigned int save_size,unsigned int my_save_size,unsigned int** id_to_loc,int* assignments,char* additional_temp,char* additional_out,ConnData* conninfo,FILE** my_tempfile, MPI_Comm comm)
 {
 	int i,proc,k;
 	unsigned int j,l,m,loc,id,counter,total_spaces,my_max_disk,max_disk,*space_counter,size = 16;
@@ -118,7 +118,7 @@ int Process_Data(Link** sys,UnivVars* GlobalVars,unsigned int N,unsigned int* sa
 				if(my_rank == 0)
 					fprintf(outputfile,"\n%u %u\n",save_list[i],current->disk_iterations);
 				else
-					MPI_Send(&(current->disk_iterations),1,MPI_UNSIGNED,0,save_list[i],MPI_COMM_WORLD);
+					MPI_Send(&(current->disk_iterations),1,MPI_UNSIGNED,0,save_list[i],comm);
 
 				//Read data in the temp file
 				if(my_rank == 0)
@@ -140,7 +140,7 @@ int Process_Data(Link** sys,UnivVars* GlobalVars,unsigned int N,unsigned int* sa
 						for(m=0;m<dim;m++)
 						{
 							fread(data_storage,GlobalVars->output_sizes[m],1,inputfile);
-							MPI_Send(&data_storage,size,MPI_CHAR,0,save_list[i],MPI_COMM_WORLD);
+							MPI_Send(&data_storage,size,MPI_CHAR,0,save_list[i],comm);
 						}
 					}
 				}
@@ -153,14 +153,14 @@ int Process_Data(Link** sys,UnivVars* GlobalVars,unsigned int N,unsigned int* sa
 			else if(my_rank == 0)
 			{
 				//Write to file
-				MPI_Recv(&(current->disk_iterations),1,MPI_UNSIGNED,proc,save_list[i],MPI_COMM_WORLD,MPI_STATUS_IGNORE);
+				MPI_Recv(&(current->disk_iterations),1,MPI_UNSIGNED,proc,save_list[i],comm,MPI_STATUS_IGNORE);
 				fprintf(outputfile,"\n%u %u\n",save_list[i],current->disk_iterations);
 
 				for(k=0;k<current->disk_iterations;k++)
 				{
 					for(m=0;m<dim;m++)
 					{
-						MPI_Recv(data_storage,size,MPI_CHAR,proc,save_list[i],MPI_COMM_WORLD,MPI_STATUS_IGNORE);
+						MPI_Recv(data_storage,size,MPI_CHAR,proc,save_list[i],comm,MPI_STATUS_IGNORE);
 						WriteValue(outputfile,GlobalVars->output_specifiers[m],data_storage,GlobalVars->output_types[m]," ");
 					}
 					fprintf(outputfile,"\n");
@@ -233,12 +233,12 @@ int Process_Data(Link** sys,UnivVars* GlobalVars,unsigned int N,unsigned int* sa
 			{
 				if(my_max_disk < current->disk_iterations)	my_max_disk = current->disk_iterations;
 				if(my_rank != 0)
-					MPI_Send(&(current->disk_iterations),1,MPI_INT,0,save_list[j],MPI_COMM_WORLD);
+					MPI_Send(&(current->disk_iterations),1,MPI_INT,0,save_list[j],comm);
 			}
 			else if(my_rank == 0)
-				MPI_Recv(&(current->disk_iterations),1,MPI_INT,assignments[loc],save_list[j],MPI_COMM_WORLD,MPI_STATUS_IGNORE);
+				MPI_Recv(&(current->disk_iterations),1,MPI_INT,assignments[loc],save_list[j],comm,MPI_STATUS_IGNORE);
 		}
-		MPI_Allreduce(&my_max_disk,&max_disk,1,MPI_UNSIGNED,MPI_MAX,MPI_COMM_WORLD);
+		MPI_Allreduce(&my_max_disk,&max_disk,1,MPI_UNSIGNED,MPI_MAX,comm);
 		positions = (fpos_t*) malloc(save_size*sizeof(fpos_t));
 
 		//Find the starting position of each link in each file
@@ -304,7 +304,7 @@ int Process_Data(Link** sys,UnivVars* GlobalVars,unsigned int N,unsigned int* sa
 						{
 							for(l=0;l<dim;l++)
 							{
-								MPI_Recv(&data_storage,16,MPI_CHAR,assignments[loc],save_list[i],MPI_COMM_WORLD,MPI_STATUS_IGNORE);
+								MPI_Recv(&data_storage,16,MPI_CHAR,assignments[loc],save_list[i],comm,MPI_STATUS_IGNORE);
 								WriteValue(outputfile,GlobalVars->output_specifiers[l],data_storage,GlobalVars->output_types[l],",");
 							}
 							(space_counter[i])++;
@@ -329,7 +329,7 @@ int Process_Data(Link** sys,UnivVars* GlobalVars,unsigned int N,unsigned int* sa
 						for(l=0;l<dim;l++)
 						{
 							fread(data_storage,GlobalVars->output_sizes[l],1,inputfile);
-							MPI_Send(&data_storage,16,MPI_CHAR,0,save_list[i],MPI_COMM_WORLD);
+							MPI_Send(&data_storage,16,MPI_CHAR,0,save_list[i],comm);
 						}
 						fgetpos(inputfile,&(positions[i]));
 						(space_counter[i])++;
@@ -586,7 +586,7 @@ int Process_Data(Link** sys,UnivVars* GlobalVars,unsigned int N,unsigned int* sa
 					//fprintf(outputfile,"\n%u %u\n",save_list[i],current->disk_iterations);
 				//else
 				//if(!my_rank)
-				//	MPI_Send(&(current->disk_iterations),1,MPI_UNSIGNED,0,save_list[i],MPI_COMM_WORLD);
+				//	MPI_Send(&(current->disk_iterations),1,MPI_UNSIGNED,0,save_list[i],comm);
 
 				//Read data in the temp file
 				if(my_rank == 0)
@@ -604,7 +604,7 @@ int Process_Data(Link** sys,UnivVars* GlobalVars,unsigned int N,unsigned int* sa
 				else
 				{
 //printf("[%i] Sending iters about %i...\n",my_rank,save_list[i]);
-					MPI_Send(&(current->disk_iterations),1,MPI_UNSIGNED,0,save_list[i],MPI_COMM_WORLD);
+					MPI_Send(&(current->disk_iterations),1,MPI_UNSIGNED,0,save_list[i],comm);
 //printf("[%i] Sent iters\n",my_rank);
 					for(k=0;k<current->disk_iterations;k++)
 					{
@@ -612,8 +612,8 @@ int Process_Data(Link** sys,UnivVars* GlobalVars,unsigned int N,unsigned int* sa
 						for(m=0;m<dim;m++)
 						{
 							fread(data_storage,GlobalVars->output_sizes[m],1,inputfile);
-							//MPI_Send(&data_storage,size,MPI_CHAR,0,save_list[i],MPI_COMM_WORLD);
-							MPI_Send(data_storage,size,MPI_CHAR,0,save_list[i],MPI_COMM_WORLD);		//!!!! Why do some sends/recvs have & and some don't? !!!!
+							//MPI_Send(&data_storage,size,MPI_CHAR,0,save_list[i],comm);
+							MPI_Send(data_storage,size,MPI_CHAR,0,save_list[i],comm);		//!!!! Why do some sends/recvs have & and some don't? !!!!
 						}
 //printf("[%i] Sent data (%i/%i)\n",my_rank,k,current->disk_iterations);
 					}
@@ -628,7 +628,7 @@ int Process_Data(Link** sys,UnivVars* GlobalVars,unsigned int N,unsigned int* sa
 			{
 //printf("[%i] Recving iters from %i about %i...\n",my_rank,proc,save_list[i]);
 				//Write to file
-				MPI_Recv(&(current->disk_iterations),1,MPI_UNSIGNED,proc,save_list[i],MPI_COMM_WORLD,MPI_STATUS_IGNORE);
+				MPI_Recv(&(current->disk_iterations),1,MPI_UNSIGNED,proc,save_list[i],comm,MPI_STATUS_IGNORE);
 				//fprintf(outputfile,"\n%u %u\n",save_list[i],current->disk_iterations);
 //printf("[%i] Recved iters\n",my_rank);
 
@@ -637,7 +637,7 @@ int Process_Data(Link** sys,UnivVars* GlobalVars,unsigned int N,unsigned int* sa
 //printf("[%i] Recving data about %i (%i/%i)...\n",my_rank,save_list[i],k,current->disk_iterations);
 					for(m=0;m<dim;m++)
 					{
-						MPI_Recv(data_storage,size,MPI_CHAR,proc,save_list[i],MPI_COMM_WORLD,MPI_STATUS_IGNORE);
+						MPI_Recv(data_storage,size,MPI_CHAR,proc,save_list[i],comm,MPI_STATUS_IGNORE);
 						fwrite(data_storage,GlobalVars->output_sizes[m],1,outputfile);
 						//WriteValue(outputfile,GlobalVars->output_specifiers[m],data_storage,GlobalVars->output_types[m]," ");
 					}
@@ -656,7 +656,7 @@ int Process_Data(Link** sys,UnivVars* GlobalVars,unsigned int N,unsigned int* sa
 	if(my_rank == 0)
 		printf("\nResults written to file %s.\n",outputfilename);
 
-	MPI_Barrier(MPI_COMM_WORLD);
+	MPI_Barrier(comm);
 
 	//Reopen the tempfile
 	if(my_tempfile && my_save_size > 0)
@@ -683,7 +683,7 @@ int Process_Data(Link** sys,UnivVars* GlobalVars,unsigned int N,unsigned int* sa
 
 
 
-int Interpret_Data(Link** sys,UnivVars* GlobalVars,unsigned int N,unsigned int* save_list,unsigned int save_size,unsigned int my_save_size,unsigned int** id_to_loc,int* assignments,char* additional_temp,char* additional_out,ConnData* conninfo,FILE** my_tempfile,char* textof)
+int Interpret_Data(Link** sys,UnivVars* GlobalVars,unsigned int N,unsigned int* save_list,unsigned int save_size,unsigned int my_save_size,unsigned int** id_to_loc,int* assignments,char* additional_temp,char* additional_out,ConnData* conninfo,FILE** my_tempfile,char* textof, MPI_Comm comm)
 {
 	int i,proc,k;
 	unsigned int j,l,m,loc,id,counter,total_spaces,my_max_disk,max_disk,*space_counter,size = 16;
@@ -737,12 +737,12 @@ int Interpret_Data(Link** sys,UnivVars* GlobalVars,unsigned int N,unsigned int* 
 			{
 				if(my_max_disk < current->disk_iterations)	my_max_disk = current->disk_iterations;
 				if(my_rank != 0)
-					MPI_Send(&(current->disk_iterations),1,MPI_INT,0,save_list[j],MPI_COMM_WORLD);
+					MPI_Send(&(current->disk_iterations),1,MPI_INT,0,save_list[j],comm);
 			}
 			else if(my_rank == 0)
-				MPI_Recv(&(current->disk_iterations),1,MPI_INT,assignments[loc],save_list[j],MPI_COMM_WORLD,MPI_STATUS_IGNORE);
+				MPI_Recv(&(current->disk_iterations),1,MPI_INT,assignments[loc],save_list[j],comm,MPI_STATUS_IGNORE);
 		}
-		MPI_Allreduce(&my_max_disk,&max_disk,1,MPI_UNSIGNED,MPI_MAX,MPI_COMM_WORLD);
+		MPI_Allreduce(&my_max_disk,&max_disk,1,MPI_UNSIGNED,MPI_MAX,comm);
 		positions = (fpos_t*) malloc(save_size*sizeof(fpos_t));
 
 		//Find the starting position of each link in each file
@@ -794,7 +794,7 @@ int Interpret_Data(Link** sys,UnivVars* GlobalVars,unsigned int N,unsigned int* 
 						{
 							for(l=0;l<dim;l++)
 							{
-								MPI_Recv(&data_storage,16,MPI_CHAR,assignments[loc],save_list[i],MPI_COMM_WORLD,MPI_STATUS_IGNORE);
+								MPI_Recv(&data_storage,16,MPI_CHAR,assignments[loc],save_list[i],comm,MPI_STATUS_IGNORE);
 								lenof = sprintf(buffstar,"%.12e",*(double*)data_storage);
                                                                 strcpy(&textof[texpoin],buffstar);
                                                                 texpoin = texpoin + lenof;
@@ -824,7 +824,7 @@ int Interpret_Data(Link** sys,UnivVars* GlobalVars,unsigned int N,unsigned int* 
 						for(l=0;l<dim;l++)
 						{
 							fread(data_storage,GlobalVars->output_sizes[l],1,inputfile);
-							MPI_Send(&data_storage,16,MPI_CHAR,0,save_list[i],MPI_COMM_WORLD);
+							MPI_Send(&data_storage,16,MPI_CHAR,0,save_list[i],comm);
 						}
 						fgetpos(inputfile,&(positions[i]));
 						(space_counter[i])++;
@@ -839,7 +839,7 @@ int Interpret_Data(Link** sys,UnivVars* GlobalVars,unsigned int N,unsigned int* 
 		free(space_counter);
 
 
-	MPI_Barrier(MPI_COMM_WORLD);
+	MPI_Barrier(comm);
 
 	//Reopen the tempfile
 	if(my_tempfile && my_save_size > 0)
@@ -858,7 +858,7 @@ int Interpret_Data(Link** sys,UnivVars* GlobalVars,unsigned int N,unsigned int* 
 
 
 
-void PrepareDatabaseTable(UnivVars* GlobalVars,ConnData* conninfo)
+void PrepareDatabaseTable(UnivVars* GlobalVars,ConnData* conninfo, MPI_Comm comm)
 {
 	unsigned int num_cols,i;
 	PGresult* res;
@@ -893,12 +893,12 @@ void PrepareDatabaseTable(UnivVars* GlobalVars,ConnData* conninfo)
 		if(num_cols > GlobalVars->num_print)
 		{
 			printf("[%i]: Error: need more outputs in .gbl file.\n",my_rank);
-			MPI_Abort(MPI_COMM_WORLD,1);
+			MPI_Abort(comm,1);
 		}
 		else if(num_cols < GlobalVars->num_print)
 		{
 			printf("[%i]: Error: need more columns in table %s. Got %i, expected %i.\n",my_rank,GlobalVars->hydro_table,num_cols,GlobalVars->num_print);
-			MPI_Abort(MPI_COMM_WORLD,1);
+			MPI_Abort(comm,1);
 		}
 
 		for(i=0;i<num_cols;i++)
@@ -906,14 +906,14 @@ void PrepareDatabaseTable(UnivVars* GlobalVars,ConnData* conninfo)
 			if(GlobalVars->output_types[i] == ASYNCH_BAD_TYPE)
 			{
 				printf("[%i]: Error: output %i must be set to prepare database tables.\n",my_rank,i);
-				MPI_Abort(MPI_COMM_WORLD,1);
+				MPI_Abort(comm,1);
 			}
 			else if( strcmp(PQgetvalue(res,i,0),"double precision") == 0 )
 			{
 				if(GlobalVars->output_types[i] != ASYNCH_DOUBLE)
 				{
 					printf("[%i]: Error: Output %i is of type double precision in output table, but should not be. %hi\n",my_rank,i,GlobalVars->output_types[i]);
-					MPI_Abort(MPI_COMM_WORLD,1);
+					MPI_Abort(comm,1);
 				}
 			}
 			else if( strcmp(PQgetvalue(res,i,0),"integer") == 0 )
@@ -921,7 +921,7 @@ void PrepareDatabaseTable(UnivVars* GlobalVars,ConnData* conninfo)
 				if(GlobalVars->output_types[i] != ASYNCH_INT)
 				{
 					printf("[%i]: Error: Output %i is of type integer in output table, but should not be. %hi\n",my_rank,i,GlobalVars->output_types[i]);
-					MPI_Abort(MPI_COMM_WORLD,1);
+					MPI_Abort(comm,1);
 				}
 			}
 			else if( strcmp(PQgetvalue(res,i,0),"single precision") == 0 )
@@ -929,7 +929,7 @@ void PrepareDatabaseTable(UnivVars* GlobalVars,ConnData* conninfo)
 				if(GlobalVars->output_types[i] != ASYNCH_FLOAT)
 				{
 					printf("[%i]: Error: Output %i is of type single precision in output table, but should not be. %hi\n",my_rank,i,GlobalVars->output_types[i]);
-					MPI_Abort(MPI_COMM_WORLD,1);
+					MPI_Abort(comm,1);
 				}
 			}
 			else if( strcmp(PQgetvalue(res,i,0),"short integer") == 0 )
@@ -937,7 +937,7 @@ void PrepareDatabaseTable(UnivVars* GlobalVars,ConnData* conninfo)
 				if(GlobalVars->output_types[i] != ASYNCH_SHORT)
 				{
 					printf("[%i]: Error: Output %i is of type short integer in output table, but should not be. %hi\n",my_rank,i,GlobalVars->output_types[i]);
-					MPI_Abort(MPI_COMM_WORLD,1);
+					MPI_Abort(comm,1);
 				}
 			}
 			else if( strcmp(PQgetvalue(res,i,0),"character") == 0 )
@@ -945,13 +945,13 @@ void PrepareDatabaseTable(UnivVars* GlobalVars,ConnData* conninfo)
 				if(GlobalVars->output_types[i] != ASYNCH_CHAR)
 				{
 					printf("[%i]: Error: Output %i is of type character in output table, but should not be. %hi\n",my_rank,i,GlobalVars->output_types[i]);
-					MPI_Abort(MPI_COMM_WORLD,1);
+					MPI_Abort(comm,1);
 				}
 			}
 			else
 			{
 				printf("[%i]: Error: Bad datatype for output %i while preparing database tables. (%s)\n",my_rank,i,PQgetvalue(res,i,0));
-				MPI_Abort(MPI_COMM_WORLD,1);
+				MPI_Abort(comm,1);
 			}
 		}
 
@@ -965,7 +965,7 @@ void PrepareDatabaseTable(UnivVars* GlobalVars,ConnData* conninfo)
 //Return value = 0 means everything is good.
 //1 means a database related error.
 //2 means a file system related error.
-int UploadHydrosDB(Link** sys,UnivVars* GlobalVars,unsigned int N,unsigned int* save_list,unsigned int save_size,unsigned int my_save_size,unsigned int** id_to_loc,int* assignments,char* additional_temp,char* additional_out,ConnData* conninfo,FILE** my_tempfile)
+int UploadHydrosDB(Link** sys,UnivVars* GlobalVars,unsigned int N,unsigned int* save_list,unsigned int save_size,unsigned int my_save_size,unsigned int** id_to_loc,int* assignments,char* additional_temp,char* additional_out,ConnData* conninfo,FILE** my_tempfile, MPI_Comm comm)
 {
 	int i,k,nbytes,my_result = 0,result = 0,return_val = 0;
 	unsigned int j,l,m,loc,id,total_spaces,max_disk;
@@ -1011,7 +1011,7 @@ int UploadHydrosDB(Link** sys,UnivVars* GlobalVars,unsigned int N,unsigned int* 
 	}
 
 	//Check if an error occurred
-	MPI_Allreduce(&my_result,&result,1,MPI_INT,MPI_LOR,MPI_COMM_WORLD);
+	MPI_Allreduce(&my_result,&result,1,MPI_INT,MPI_LOR,comm);
 	if(result)
 	{
 		return_val = 2;
@@ -1045,7 +1045,7 @@ int UploadHydrosDB(Link** sys,UnivVars* GlobalVars,unsigned int N,unsigned int* 
 	}
 
 	//Check if an error occurred
-	MPI_Bcast(&result,1,MPI_INT,0,MPI_COMM_WORLD);
+	MPI_Bcast(&result,1,MPI_INT,0,comm);
 	if(result)
 	{
 		return_val = 1;
@@ -1101,19 +1101,19 @@ int UploadHydrosDB(Link** sys,UnivVars* GlobalVars,unsigned int N,unsigned int* 
 			else
 			{
 				//Get disk_iterations
-				MPI_Recv(&(current->disk_iterations),1,MPI_UNSIGNED,assignments[loc],loc,MPI_COMM_WORLD,MPI_STATUS_IGNORE);
+				MPI_Recv(&(current->disk_iterations),1,MPI_UNSIGNED,assignments[loc],loc,comm,MPI_STATUS_IGNORE);
 
 				//Now read in the data in the temp file, and submit them to the database
 				for(k=0;k<current->disk_iterations;k++)
 				{
-					MPI_Recv(&nbytes,1,MPI_UNSIGNED,assignments[loc],loc,MPI_COMM_WORLD,MPI_STATUS_IGNORE);
-					MPI_Recv(submission,nbytes,MPI_CHAR,assignments[loc],loc,MPI_COMM_WORLD,MPI_STATUS_IGNORE);
+					MPI_Recv(&nbytes,1,MPI_UNSIGNED,assignments[loc],loc,comm,MPI_STATUS_IGNORE);
+					MPI_Recv(submission,nbytes,MPI_CHAR,assignments[loc],loc,comm,MPI_STATUS_IGNORE);
 					result = PQputCopyData(conninfo->conn,submission,nbytes);
 				}
 			}
 
 			//Check if an error occurred.
-			MPI_Bcast(&result,1,MPI_INT,0,MPI_COMM_WORLD);
+			MPI_Bcast(&result,1,MPI_INT,0,comm);
 			if(result != 1)
 			{
 				printf("Error: copy returned result %i.\n",result);
@@ -1144,7 +1144,7 @@ int UploadHydrosDB(Link** sys,UnivVars* GlobalVars,unsigned int N,unsigned int* 
 				}
 
 				//Send disk_iterations
-				MPI_Send(&(current->disk_iterations),1,MPI_UNSIGNED,0,loc,MPI_COMM_WORLD);
+				MPI_Send(&(current->disk_iterations),1,MPI_UNSIGNED,0,loc,comm);
 
 				//Now read in the data in the temp file, and submit them to the database
 				for(k=0;k<current->disk_iterations;k++)
@@ -1158,8 +1158,8 @@ int UploadHydrosDB(Link** sys,UnivVars* GlobalVars,unsigned int N,unsigned int* 
 					fread(data_storage,GlobalVars->output_sizes[j],1,inputfile);
 					nbytes += CatBinaryToString(&(submission[nbytes]),GlobalVars->output_specifiers[j],data_storage,GlobalVars->output_types[j],"\n");
 
-					MPI_Send(&nbytes,1,MPI_UNSIGNED,0,loc,MPI_COMM_WORLD);
-					MPI_Send(submission,nbytes,MPI_CHAR,0,loc,MPI_COMM_WORLD);
+					MPI_Send(&nbytes,1,MPI_UNSIGNED,0,loc,comm);
+					MPI_Send(submission,nbytes,MPI_CHAR,0,loc,comm);
 				}
 
 				//Skip over the last unused space. This is done so that the file does not need to be rewound.
@@ -1169,7 +1169,7 @@ int UploadHydrosDB(Link** sys,UnivVars* GlobalVars,unsigned int N,unsigned int* 
 			}
 
 			//Check if an error occurred
-			MPI_Bcast(&result,1,MPI_INT,0,MPI_COMM_WORLD);
+			MPI_Bcast(&result,1,MPI_INT,0,comm);
 			if(result != 1)
 			{
 				return_val = 1;
@@ -1211,7 +1211,7 @@ int UploadHydrosDB(Link** sys,UnivVars* GlobalVars,unsigned int N,unsigned int* 
 		if(!return_val)	printf("\nResults written to table %s.\n",GlobalVars->hydro_table);
 	}
 
-	MPI_Bcast(&return_val,1,MPI_INT,0,MPI_COMM_WORLD);
+	MPI_Bcast(&return_val,1,MPI_INT,0,comm);
 
 	//Reopen the tempfile
 	if(my_save_size > 0)
@@ -1270,7 +1270,7 @@ int PreparePeakFlowFiles(UnivVars* GlobalVars,unsigned int peaksave_size)
 
 
 //Writes to disk the current peakflow information.
-int DumpPeakFlowData(Link** sys,UnivVars* GlobalVars,unsigned int N,int* assignments,unsigned int* peaksave_list,unsigned int peaksave_size,unsigned int** id_to_loc,ConnData* conninfo)
+int DumpPeakFlowData(Link** sys,UnivVars* GlobalVars,unsigned int N,int* assignments,unsigned int* peaksave_list,unsigned int peaksave_size,unsigned int** id_to_loc,ConnData* conninfo, MPI_Comm comm)
 {
 	unsigned int i,length,error = 0,loc;
 	Link* current;
@@ -1298,7 +1298,7 @@ int DumpPeakFlowData(Link** sys,UnivVars* GlobalVars,unsigned int N,int* assignm
 			else
 				fprintf(peakfile,"%i\n%i\n\n",peaksave_size,GlobalVars->type);
 		}
-		MPI_Bcast(&error,1,MPI_UNSIGNED,0,MPI_COMM_WORLD);
+		MPI_Bcast(&error,1,MPI_UNSIGNED,0,comm);
 		if(error)	return 1;
 
 		//Write data to file
@@ -1315,8 +1315,8 @@ int DumpPeakFlowData(Link** sys,UnivVars* GlobalVars,unsigned int N,int* assignm
 				}
 				else
 				{
-					MPI_Recv(&length,1,MPI_UNSIGNED,assignments[loc],0,MPI_COMM_WORLD,MPI_STATUS_IGNORE);
-					MPI_Recv(buffer,length+1,MPI_CHAR,assignments[loc],0,MPI_COMM_WORLD,MPI_STATUS_IGNORE);
+					MPI_Recv(&length,1,MPI_UNSIGNED,assignments[loc],0,comm,MPI_STATUS_IGNORE);
+					MPI_Recv(buffer,length+1,MPI_CHAR,assignments[loc],0,comm,MPI_STATUS_IGNORE);
 				}
 
 				fprintf(peakfile,"%s",buffer);
@@ -1336,20 +1336,20 @@ int DumpPeakFlowData(Link** sys,UnivVars* GlobalVars,unsigned int N,int* assignm
 				{
 					GlobalVars->peakflow_output(current->ID,current->peak_time,current->peak_value,current->params,GlobalVars->global_params,conversion,GlobalVars->area_idx,current->peakoutput_user,buffer);
 					length = strlen(buffer);
-					MPI_Send(&length,1,MPI_UNSIGNED,0,0,MPI_COMM_WORLD);
-					MPI_Send(buffer,length+1,MPI_CHAR,0,0,MPI_COMM_WORLD);
+					MPI_Send(&length,1,MPI_UNSIGNED,0,0,comm);
+					MPI_Send(buffer,length+1,MPI_CHAR,0,0,comm);
 				}
 			}
 		}
 	}
 
-	MPI_Barrier(MPI_COMM_WORLD);
+	MPI_Barrier(comm);
 
 	return 0;
 }
 
 //Uploads the current peakflow information to a database.
-int UploadPeakFlowData(Link** sys,UnivVars* GlobalVars,unsigned int N,int* assignments,unsigned int* peaksave_list,unsigned int peaksave_size,unsigned int** id_to_loc,ConnData* conninfo)
+int UploadPeakFlowData(Link** sys,UnivVars* GlobalVars,unsigned int N,int* assignments,unsigned int* peaksave_list,unsigned int peaksave_size,unsigned int** id_to_loc,ConnData* conninfo, MPI_Comm comm)
 {
 	unsigned int i,loc,length,result,return_val = 0,error = 0;
 	char temptablename[GlobalVars->query_size],buffer[256];
@@ -1405,7 +1405,7 @@ printf("[%i]: Warning: I think you need a file to create a peakflow table...\n",
 		}
 
 		//Return if proc 0 encountered an error
-		MPI_Bcast(&error,1,MPI_UNSIGNED,0,MPI_COMM_WORLD);
+		MPI_Bcast(&error,1,MPI_UNSIGNED,0,comm);
 		if(error)	return 1;
 
 		//Upload data
@@ -1429,8 +1429,8 @@ printf("[%i]: Warning: I think you need a file to create a peakflow table...\n",
 				}
 				else
 				{
-					MPI_Recv(&length,1,MPI_UNSIGNED,assignments[loc],0,MPI_COMM_WORLD,MPI_STATUS_IGNORE);
-					MPI_Recv(buffer,length+1,MPI_CHAR,assignments[loc],0,MPI_COMM_WORLD,MPI_STATUS_IGNORE);
+					MPI_Recv(&length,1,MPI_UNSIGNED,assignments[loc],0,comm,MPI_STATUS_IGNORE);
+					MPI_Recv(buffer,length+1,MPI_CHAR,assignments[loc],0,comm,MPI_STATUS_IGNORE);
 				}
 
 				result = PQputCopyData(conninfo->conn,buffer,length);
@@ -1480,14 +1480,14 @@ printf("[%i]: Warning: I think you need a file to create a peakflow table...\n",
 				{
 					GlobalVars->peakflow_output(current->ID,current->peak_time,current->peak_value,current->params,GlobalVars->global_params,conversion,GlobalVars->area_idx,current->peakoutput_user,buffer);
 					length = strlen(buffer);
-					MPI_Send(&length,1,MPI_UNSIGNED,0,0,MPI_COMM_WORLD);
-					MPI_Send(buffer,length+1,MPI_CHAR,0,0,MPI_COMM_WORLD);
+					MPI_Send(&length,1,MPI_UNSIGNED,0,0,comm);
+					MPI_Send(buffer,length+1,MPI_CHAR,0,0,comm);
 				}
 			}
 		}
 
 		//Make sure everyone knows if an error occured
-		MPI_Bcast(&return_val,1,MPI_UNSIGNED,0,MPI_COMM_WORLD);
+		MPI_Bcast(&return_val,1,MPI_UNSIGNED,0,comm);
 
 		if(my_rank == 0 && !return_val)
 			printf("Peakflows written to table %s.\n",GlobalVars->peak_table);
@@ -1517,7 +1517,7 @@ void DataDump(Link** sys,unsigned int N,int* assignments,UnivVars* GlobalVars,un
 		for(i=0;i<N;i++)
 		{
 			if(assignments[i] != 0)
-				MPI_Recv(buffer,dim,MPI_DOUBLE,assignments[i],i,MPI_COMM_WORLD,MPI_STATUS_IGNORE);
+				MPI_Recv(buffer,dim,MPI_DOUBLE,assignments[i],i,comm,MPI_STATUS_IGNORE);
 			else
 				for(j=0;j<dim;j++)	buffer[j] = sys[i]->list->tail->y_approx->ve[j];
 
@@ -1535,18 +1535,18 @@ void DataDump(Link** sys,unsigned int N,int* assignments,UnivVars* GlobalVars,un
 			if(assignments[i] == my_rank)
 			{
 				for(j=0;j<dim;j++)	buffer[j] = sys[i]->list->tail->y_approx->ve[j];
-				MPI_Send(buffer,dim,MPI_DOUBLE,0,i,MPI_COMM_WORLD);
+				MPI_Send(buffer,dim,MPI_DOUBLE,0,i,comm);
 			}
 		}
 	}
 
-	MPI_Barrier(MPI_COMM_WORLD);
+	MPI_Barrier(comm);
 }
 */
 
 
 //This is the same as DataDump, but allows for a generic name
-int DataDump2(Link** sys,unsigned int N,int* assignments,UnivVars* GlobalVars,char* preface,ConnData* conninfo)
+int DataDump2(Link** sys,unsigned int N,int* assignments,UnivVars* GlobalVars,char* preface,ConnData* conninfo, MPI_Comm comm)
 {
 	unsigned int i,j;
 	FILE* output;
@@ -1567,7 +1567,7 @@ int DataDump2(Link** sys,unsigned int N,int* assignments,UnivVars* GlobalVars,ch
 			i = 1;
 		}
 		else	i = 0;
-		MPI_Bcast(&i,1,MPI_UNSIGNED,0,MPI_COMM_WORLD);
+		MPI_Bcast(&i,1,MPI_UNSIGNED,0,comm);
 		if(i)	return 1;
 
 		fprintf(output,"%hu\n%u\n0.0\n\n",GlobalVars->type,N);
@@ -1575,7 +1575,7 @@ int DataDump2(Link** sys,unsigned int N,int* assignments,UnivVars* GlobalVars,ch
 		for(i=0;i<N;i++)
 		{
 			if(assignments[i] != 0)
-				MPI_Recv(buffer,sys[i]->dim,MPI_DOUBLE,assignments[i],i,MPI_COMM_WORLD,MPI_STATUS_IGNORE);
+				MPI_Recv(buffer,sys[i]->dim,MPI_DOUBLE,assignments[i],i,comm,MPI_STATUS_IGNORE);
 			else
 				for(j=0;j<sys[i]->dim;j++)	buffer[j] = sys[i]->list->tail->y_approx->ve[j];
 
@@ -1589,7 +1589,7 @@ int DataDump2(Link** sys,unsigned int N,int* assignments,UnivVars* GlobalVars,ch
 	else			//Sending data to proc 0
 	{
 		//Check for error
-		MPI_Bcast(&i,1,MPI_UNSIGNED,0,MPI_COMM_WORLD);
+		MPI_Bcast(&i,1,MPI_UNSIGNED,0,comm);
 		if(i)	return 1;
 
 		for(i=0;i<N;i++)
@@ -1597,16 +1597,16 @@ int DataDump2(Link** sys,unsigned int N,int* assignments,UnivVars* GlobalVars,ch
 			if(assignments[i] == my_rank)
 			{
 				for(j=0;j<sys[i]->dim;j++)	buffer[j] = sys[i]->list->tail->y_approx->ve[j];
-				MPI_Send(buffer,sys[i]->dim,MPI_DOUBLE,0,i,MPI_COMM_WORLD);
+				MPI_Send(buffer,sys[i]->dim,MPI_DOUBLE,0,i,comm);
 			}
 		}
 	}
 
-	MPI_Barrier(MPI_COMM_WORLD);
+	MPI_Barrier(comm);
 	return 0;
 }
 
-int UploadDBDataDump(Link** sys,unsigned int N,int* assignments,UnivVars* GlobalVars,char* preface,ConnData* conninfo)
+int UploadDBDataDump(Link** sys,unsigned int N,int* assignments,UnivVars* GlobalVars,char* preface,ConnData* conninfo, MPI_Comm comm)
 {
 	unsigned int i,j,init_length,nbytes;
 	char query[GlobalVars->query_size],state_name[32],temptablename[GlobalVars->query_size];
@@ -1690,7 +1690,7 @@ int UploadDBDataDump(Link** sys,unsigned int N,int* assignments,UnivVars* Global
 		}
 
 		//Tell all procs if an error occured
-		MPI_Bcast(&error,1,MPI_INT,0,MPI_COMM_WORLD);
+		MPI_Bcast(&error,1,MPI_INT,0,comm);
 
 		//Upload data
 		if(!error)
@@ -1707,7 +1707,7 @@ int UploadDBDataDump(Link** sys,unsigned int N,int* assignments,UnivVars* Global
 				}
 				else
 				{
-					MPI_Recv(&(submission[init_length]),size-init_length,MPI_CHAR,assignments[i],sys[i]->ID,MPI_COMM_WORLD,MPI_STATUS_IGNORE);
+					MPI_Recv(&(submission[init_length]),size-init_length,MPI_CHAR,assignments[i],sys[i]->ID,comm,MPI_STATUS_IGNORE);
 					nbytes += strlen(&(submission[init_length]));
 				}
 
@@ -1750,7 +1750,7 @@ int UploadDBDataDump(Link** sys,unsigned int N,int* assignments,UnivVars* Global
 	else			//Sending data to proc 0
 	{
 		//See if proc 0 encountered an error
-		MPI_Bcast(&error,1,MPI_INT,0,MPI_COMM_WORLD);
+		MPI_Bcast(&error,1,MPI_INT,0,comm);
 
 		if(!error)
 		{
@@ -1763,20 +1763,20 @@ int UploadDBDataDump(Link** sys,unsigned int N,int* assignments,UnivVars* Global
 					for(j=0;j<sys[i]->dim;j++)
 						nbytes += CatBinaryToString(&(submission[nbytes]),"%.6e",(char*)&(sys[i]->list->tail->y_approx->ve[j]), ASYNCH_DOUBLE,",");
 					submission[nbytes-1] = '\n';
-					MPI_Send(&(submission[init_length]),size-init_length,MPI_CHAR,0,sys[i]->ID,MPI_COMM_WORLD);
+					MPI_Send(&(submission[init_length]),size-init_length,MPI_CHAR,0,sys[i]->ID,comm);
 				}
 			}
 		}
 	}
 
 	//See if proc 0 encountered an error
-	MPI_Bcast(&error,1,MPI_INT,0,MPI_COMM_WORLD);
+	MPI_Bcast(&error,1,MPI_INT,0,comm);
 
 	return error;
 }
 
 
-FILE* PrepareTempFiles(Link** sys,unsigned int N,int* assignments,UnivVars* GlobalVars,unsigned int* save_list,unsigned int save_size,unsigned int my_save_size,char* additional,unsigned int** id_to_loc)
+FILE* PrepareTempFiles(Link** sys,unsigned int N,int* assignments,UnivVars* GlobalVars,unsigned int* save_list,unsigned int save_size,unsigned int my_save_size,char* additional,unsigned int** id_to_loc, MPI_Comm comm)
 {
 	unsigned int i,j,loc,start;
 	Link* current;
@@ -1809,7 +1809,7 @@ FILE* PrepareTempFiles(Link** sys,unsigned int N,int* assignments,UnivVars* Glob
 			else
 			{
 				printf("[%i]: Error: Could not create file %s.\n",my_rank,filename);
-				MPI_Abort(MPI_COMM_WORLD,1);
+				MPI_Abort(comm,1);
 			}
 		}
 		//if(GlobalVars->assim_flag == 1)	start = 0;
@@ -1852,7 +1852,7 @@ FILE* PrepareTempFiles(Link** sys,unsigned int N,int* assignments,UnivVars* Glob
 		//for(i=0;i<4;i++)	fwrite(&dummy_t,sizeof(double),1,outputfile);
 	}
 
-	MPI_Barrier(MPI_COMM_WORLD);
+	MPI_Barrier(comm);
 	return outputfile;
 }
 
@@ -2151,13 +2151,13 @@ int SetTempFiles(double set_time,Link** sys,unsigned int N,FILE* tempfile,UnivVa
 
 //Read in a .rec file from disk and loads it into the intial condition for sys (tail).
 //This does NOT set the current time at each link.
-void LoadRecoveryFile(char* filename,Link** sys,unsigned int N,unsigned int my_N,unsigned int* assignments,UnivVars* GlobalVars)
+void LoadRecoveryFile(char* filename,Link** sys,unsigned int N,unsigned int my_N,unsigned int* assignments,UnivVars* GlobalVars, MPI_Comm comm)
 {
 	FILE* input;
 	unsigned int i,j,read_type,read_N,id,counter=0;
 	VEC* buffer = NULL;
 
-	MPI_Barrier(MPI_COMM_WORLD);
+	MPI_Barrier(comm);
 
 	if(my_rank == 0)
 	{
@@ -2165,14 +2165,14 @@ void LoadRecoveryFile(char* filename,Link** sys,unsigned int N,unsigned int my_N
 		if(!input)
 		{
 			printf("[%i]: Error opening recovery file %s.\n",my_rank,filename);
-			MPI_Abort(MPI_COMM_WORLD,1);
+			MPI_Abort(comm,1);
 		}
 
 		fscanf(input,"%u %u %*f",&read_type,&read_N);
 		if(N != read_N)		//!!!! Ignoring read_type for now (190 vs 19) !!!!
 		{
 			printf("[%i]: Error reading recovery file: bad model type (%i) or wrong number of links (%i).\n",my_rank,read_type,read_N);
-			MPI_Abort(MPI_COMM_WORLD,1);
+			MPI_Abort(comm,1);
 		}
 
 		for(i=0;i<N;i++)
@@ -2181,7 +2181,7 @@ void LoadRecoveryFile(char* filename,Link** sys,unsigned int N,unsigned int my_N
 			if(sys[i]->ID != id)
 			{
 				printf("[%i]: Error reading recovery file: bad link id (%i); expected %i.\n",my_rank,id,sys[i]->ID);
-				MPI_Abort(MPI_COMM_WORLD,1);
+				MPI_Abort(comm,1);
 			}
 
 			buffer = v_get(sys[i]->dim);
@@ -2190,8 +2190,8 @@ void LoadRecoveryFile(char* filename,Link** sys,unsigned int N,unsigned int my_N
 			if(assignments[i] == my_rank)	v_copy(buffer,sys[i]->list->tail->y_approx);
 			else
 			{
-				MPI_Send(&i,1,MPI_UNSIGNED,assignments[i],0,MPI_COMM_WORLD);
-				MPI_Send(buffer->ve,buffer->dim,MPI_DOUBLE,assignments[i],0,MPI_COMM_WORLD);
+				MPI_Send(&i,1,MPI_UNSIGNED,assignments[i],0,comm);
+				MPI_Send(buffer->ve,buffer->dim,MPI_DOUBLE,assignments[i],0,comm);
 			}
 			v_free(buffer);
 		}
@@ -2200,13 +2200,13 @@ void LoadRecoveryFile(char* filename,Link** sys,unsigned int N,unsigned int my_N
 	{
 		while(counter < my_N)
 		{
-			MPI_Recv(&i,1,MPI_UNSIGNED,0,0,MPI_COMM_WORLD,MPI_STATUS_IGNORE);
-			MPI_Recv(sys[i]->list->tail->y_approx,sys[i]->dim,MPI_DOUBLE,0,0,MPI_COMM_WORLD,MPI_STATUS_IGNORE);
+			MPI_Recv(&i,1,MPI_UNSIGNED,0,0,comm,MPI_STATUS_IGNORE);
+			MPI_Recv(sys[i]->list->tail->y_approx,sys[i]->dim,MPI_DOUBLE,0,0,comm,MPI_STATUS_IGNORE);
 			counter++;
 		}
 	}
 
-	MPI_Barrier(MPI_COMM_WORLD);
+	MPI_Barrier(comm);
 }
 
 //Rewrites the previous step written at link_i with the current step. The current time and state is used.

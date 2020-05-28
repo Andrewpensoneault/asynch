@@ -6,6 +6,13 @@ import os
 from shutil import copyfile, rmtree
 import datetime
 
+def create_tmp_folder(data,n):
+    try:
+        os.makedirs(data['tmp_folder']+str(n)+'/')
+    except OSError:
+        if not os.path.isdir(data['tmp_folder']+str(n)+'/'):
+            raise
+
 def create_output_folders(data):
     """Write output and tmp folders"""
     output_folder = data['output_folder']
@@ -214,7 +221,7 @@ def create_gbl(n, global_params, asynch_data, current_time, time_step, num_steps
     evap_filename = asynch_data['tmp_folder'] + 'asynch.mon'
     str_filename = asynch_data['tmp_folder'] + 'asynch.str'
     ini_filename = asynch_data['tmp_folder'] + str(n) + '.ini'
-    tmp_filename = asynch_data['tmp_folder'] + str(n)    
+    tmp_filename =  asynch_data['tmp_folder'] + str(n) + '/' + str(n)
     gbl_filename = asynch_data['tmp_folder'] + str(n) + '.gbl'
     model_num = asynch_data['model_num']
 

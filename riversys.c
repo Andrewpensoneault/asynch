@@ -4,7 +4,7 @@
 
 //Read topo data and build the network.
 //Also creates id_to_loc.
-Link** Create_River_Network(UnivVars* GlobalVars,unsigned int* N,unsigned int*** id_to_loc,ConnData** db_connections)
+Link** Create_River_Network(UnivVars* GlobalVars,unsigned int* N,unsigned int*** id_to_loc,ConnData** db_connections, MPI_Comm comm)
 {
 	Link **system,**upstream_order;
 	FILE* riverdata = NULL;
@@ -58,28 +58,28 @@ Link** Create_River_Network(UnivVars* GlobalVars,unsigned int* N,unsigned int***
 			fclose(riverdata);
 
 			//Broadcast data
-			MPI_Bcast(N,1,MPI_UNSIGNED,0,MPI_COMM_WORLD);
-			MPI_Bcast(link_ids,*N,MPI_UNSIGNED,0,MPI_COMM_WORLD);
-			MPI_Bcast(loc_to_children_array,*N*max_children,MPI_UNSIGNED,0,MPI_COMM_WORLD);	//Yeah, this is probably not the most efficient...
-			MPI_Bcast(numparents,*N,MPI_UNSIGNED,0,MPI_COMM_WORLD);
+			MPI_Bcast(N,1,MPI_UNSIGNED,0,comm);
+			MPI_Bcast(link_ids,*N,MPI_UNSIGNED,0,comm);
+			MPI_Bcast(loc_to_children_array,*N*max_children,MPI_UNSIGNED,0,comm);	//Yeah, this is probably not the most efficient...
+			MPI_Bcast(numparents,*N,MPI_UNSIGNED,0,comm);
 		}
 		else
 		{
-			MPI_Bcast(N,1,MPI_UNSIGNED,0,MPI_COMM_WORLD);
+			MPI_Bcast(N,1,MPI_UNSIGNED,0,comm);
 			link_ids = (unsigned int*) malloc(*N*sizeof(unsigned int));
 			loc_to_children_array = (unsigned int*) malloc(*N*max_children*sizeof(unsigned int));
 			loc_to_children = (unsigned int**) malloc(*N*sizeof(unsigned int*));	//This holds the ID of the children
 			for(i=0;i<*N;i++)	loc_to_children[i] = &(loc_to_children_array[i*max_children]);
 			numparents = (unsigned int*) malloc(*N*sizeof(unsigned int));
-			MPI_Bcast(link_ids,*N,MPI_UNSIGNED,0,MPI_COMM_WORLD);
-			MPI_Bcast(loc_to_children_array,*N*max_children,MPI_UNSIGNED,0,MPI_COMM_WORLD);
-			MPI_Bcast(numparents,*N,MPI_UNSIGNED,0,MPI_COMM_WORLD);
+			MPI_Bcast(link_ids,*N,MPI_UNSIGNED,0,comm);
+			MPI_Bcast(loc_to_children_array,*N*max_children,MPI_UNSIGNED,0,comm);
+			MPI_Bcast(numparents,*N,MPI_UNSIGNED,0,comm);
 		}
 	}
 	else if(GlobalVars->rvr_flag == 1)	//Download topo data from database
 	{
 		//if(my_rank == 0)	printf("\nTransferring topology data from database...\n");
-		//MPI_Barrier(MPI_COMM_WORLD);
+		//MPI_Barrier(comm);
 		//start = time(NULL);
 
 		if(my_rank == 0)
@@ -184,10 +184,10 @@ Link** Create_River_Network(UnivVars* GlobalVars,unsigned int* N,unsigned int***
 				numparents[curr_loc] = 0;
 
 			//Send sizes and data to other processes
-			MPI_Bcast(N,1,MPI_INT,0,MPI_COMM_WORLD);
-			MPI_Bcast(link_ids,*N,MPI_UNSIGNED,0,MPI_COMM_WORLD);
-			MPI_Bcast(loc_to_children_array,*N*max_children,MPI_UNSIGNED,0,MPI_COMM_WORLD);
-			MPI_Bcast(numparents,*N,MPI_UNSIGNED,0,MPI_COMM_WORLD);
+			MPI_Bcast(N,1,MPI_INT,0,comm);
+			MPI_Bcast(link_ids,*N,MPI_UNSIGNED,0,comm);
+			MPI_Bcast(loc_to_children_array,*N*max_children,MPI_UNSIGNED,0,comm);
+			MPI_Bcast(numparents,*N,MPI_UNSIGNED,0,comm);
 
 			//Clean up
 			free(dbres_link_id);
@@ -196,19 +196,19 @@ Link** Create_River_Network(UnivVars* GlobalVars,unsigned int* N,unsigned int***
 		else
 		{
 			//Receive data
-			MPI_Bcast(N,1,MPI_UNSIGNED,0,MPI_COMM_WORLD);
+			MPI_Bcast(N,1,MPI_UNSIGNED,0,comm);
 			link_ids = (unsigned int*) malloc(*N*sizeof(unsigned int));
 			loc_to_children_array = (unsigned int*) calloc(*N*max_children,sizeof(unsigned int));
 			loc_to_children = (unsigned int**) malloc(*N*sizeof(unsigned int*));	//This holds the ID of the children
 			for(i=0;i<*N;i++)	loc_to_children[i] = &(loc_to_children_array[i*max_children]);
 			numparents = (unsigned int*) calloc(*N,sizeof(unsigned int));
-			MPI_Bcast(link_ids,*N,MPI_UNSIGNED,0,MPI_COMM_WORLD);
-			MPI_Bcast(loc_to_children_array,*N*max_children,MPI_UNSIGNED,0,MPI_COMM_WORLD);
-			MPI_Bcast(numparents,*N,MPI_UNSIGNED,0,MPI_COMM_WORLD);
+			MPI_Bcast(link_ids,*N,MPI_UNSIGNED,0,comm);
+			MPI_Bcast(loc_to_children_array,*N*max_children,MPI_UNSIGNED,0,comm);
+			MPI_Bcast(numparents,*N,MPI_UNSIGNED,0,comm);
 		}
 
 
-		//MPI_Barrier(MPI_COMM_WORLD);
+		//MPI_Barrier(comm);
 		//stop = time(NULL);
 		//if(my_rank == 0)	printf("Time to receive data: %f\n",difftime(stop,start));
 	}
@@ -323,7 +323,7 @@ Link** Create_River_Network(UnivVars* GlobalVars,unsigned int* N,unsigned int***
 //Returns 1 if there is an error, 0 otherwise.
 //If load_all == 1, then the parameters for every link are available on every proc.
 //If load_all == 0, then the parameters are only available for links assigned to this proc.
-int Load_Local_Parameters(Link** system,unsigned int N,unsigned int* my_sys,unsigned int my_N,int* assignments,short int* getting,unsigned int** id_to_loc,UnivVars* GlobalVars,ConnData** db_connections,short int load_all,model* custom_model,void* external)
+int Load_Local_Parameters(Link** system,unsigned int N,unsigned int* my_sys,unsigned int my_N,int* assignments,short int* getting,unsigned int** id_to_loc,UnivVars* GlobalVars,ConnData** db_connections,short int load_all,model* custom_model,void* external, MPI_Comm comm)
 {
 	unsigned int i,j,*db_link_id,curr_loc;
 	int db;
@@ -443,8 +443,8 @@ int Load_Local_Parameters(Link** system,unsigned int N,unsigned int* my_sys,unsi
 	}
 
 	//Broadcast data
-	MPI_Bcast(db_link_id,N,MPI_UNSIGNED,0,MPI_COMM_WORLD);
-	MPI_Bcast(db_params_array,N*GlobalVars->disk_params,MPI_DOUBLE,0,MPI_COMM_WORLD);
+	MPI_Bcast(db_link_id,N,MPI_UNSIGNED,0,comm);
+	MPI_Bcast(db_params_array,N*GlobalVars->disk_params,MPI_DOUBLE,0,comm);
 
 	//Unpack the data
 	if(load_all)
@@ -596,7 +596,7 @@ int Parition_Network(Link** system,unsigned int N,UnivVars* GlobalVars,unsigned 
 
 //Reads numerical error tolerances. Builds RK methods.
 //!!!! I'm not really sure how to handle specifying the dimension here. Should the rkd file allow a variable number of tols? !!!!
-int Build_RKData(Link** system,char rk_filename[],unsigned int N,unsigned int* my_sys,unsigned int my_N,int* assignments,short int* getting,UnivVars* GlobalVars,ErrorData* GlobalErrors,RKMethod*** AllMethods,unsigned int* nummethods)
+int Build_RKData(Link** system,char rk_filename[],unsigned int N,unsigned int* my_sys,unsigned int my_N,int* assignments,short int* getting,UnivVars* GlobalVars,ErrorData* GlobalErrors,RKMethod*** AllMethods,unsigned int* nummethods, MPI_Comm comm)
 {
 	unsigned int i,j,size,*link_ids,*methods;
 	FILE* rkdata;
@@ -645,7 +645,7 @@ int Build_RKData(Link** system,char rk_filename[],unsigned int N,unsigned int* m
 				return 1;
 			}
 
-			MPI_Bcast(&size,1,MPI_UNSIGNED,0,MPI_COMM_WORLD);
+			MPI_Bcast(&size,1,MPI_UNSIGNED,0,comm);
 			filedata_abs = (double*) malloc(N*size*sizeof(double));
 			filedata_rel = (double*) malloc(N*size*sizeof(double));
 			filedata_abs_dense = (double*) malloc(N*size*sizeof(double));
@@ -669,7 +669,7 @@ int Build_RKData(Link** system,char rk_filename[],unsigned int N,unsigned int* m
 		}
 		else
 		{
-			MPI_Bcast(&size,1,MPI_UNSIGNED,0,MPI_COMM_WORLD);
+			MPI_Bcast(&size,1,MPI_UNSIGNED,0,comm);
 			filedata_abs = (double*) malloc(N*size*sizeof(double));
 			filedata_rel = (double*) malloc(N*size*sizeof(double));
 			filedata_abs_dense = (double*) malloc(N*size*sizeof(double));
@@ -677,12 +677,12 @@ int Build_RKData(Link** system,char rk_filename[],unsigned int N,unsigned int* m
 		}
 
 		//Broadcast data
-		MPI_Bcast(link_ids,N,MPI_UNSIGNED,0,MPI_COMM_WORLD);
-		MPI_Bcast(filedata_abs,N*size,MPI_DOUBLE,0,MPI_COMM_WORLD);
-		MPI_Bcast(filedata_rel,N*size,MPI_DOUBLE,0,MPI_COMM_WORLD);
-		MPI_Bcast(filedata_abs_dense,N*size,MPI_DOUBLE,0,MPI_COMM_WORLD);
-		MPI_Bcast(filedata_rel_dense,N*size,MPI_DOUBLE,0,MPI_COMM_WORLD);
-		MPI_Bcast(methods,N,MPI_UNSIGNED,0,MPI_COMM_WORLD);
+		MPI_Bcast(link_ids,N,MPI_UNSIGNED,0,comm);
+		MPI_Bcast(filedata_abs,N*size,MPI_DOUBLE,0,comm);
+		MPI_Bcast(filedata_rel,N*size,MPI_DOUBLE,0,comm);
+		MPI_Bcast(filedata_abs_dense,N*size,MPI_DOUBLE,0,comm);
+		MPI_Bcast(filedata_rel_dense,N*size,MPI_DOUBLE,0,comm);
+		MPI_Bcast(methods,N,MPI_UNSIGNED,0,comm);
 
 		//Construct error data at each link
 		for(i=0;i<N;i++)
@@ -726,7 +726,7 @@ int Build_RKData(Link** system,char rk_filename[],unsigned int N,unsigned int* m
 
 //Runs the init routine for the model. Also performs precalculations.
 //Returns 0 if everything is ok, 1 if an error occurred.
-int Initialize_Model(Link** system,unsigned int N,unsigned int* my_sys,unsigned int my_N,int* assignments,short int* getting,UnivVars* GlobalVars,model* custom_model,void* external)
+int Initialize_Model(Link** system,unsigned int N,unsigned int* my_sys,unsigned int my_N,int* assignments,short int* getting,UnivVars* GlobalVars,model* custom_model,void* external, MPI_Comm comm)
 {
 	unsigned int i,j,max_dim = 0,smallest_dim;
 	int my_error_code = 0,error_code;
@@ -766,13 +766,13 @@ int Initialize_Model(Link** system,unsigned int N,unsigned int* my_sys,unsigned 
 	}
 
 	//Check if an error occurred
-	MPI_Allreduce(&my_error_code,&error_code,1,MPI_INT,MPI_LOR,MPI_COMM_WORLD);
+	MPI_Allreduce(&my_error_code,&error_code,1,MPI_INT,MPI_LOR,comm);
 	if(error_code)	return 1;
 
 	//Make sure all procs know how large the problem is everywhere
-	MPI_Allreduce(&max_dim,&(GlobalVars->max_dim),1,MPI_UNSIGNED,MPI_MAX,MPI_COMM_WORLD);
+	MPI_Allreduce(&max_dim,&(GlobalVars->max_dim),1,MPI_UNSIGNED,MPI_MAX,comm);
 	for(i=0;i<N;i++)
-		MPI_Bcast(&(system[i]->dim),1,MPI_UNSIGNED,assignments[i],MPI_COMM_WORLD);
+		MPI_Bcast(&(system[i]->dim),1,MPI_UNSIGNED,assignments[i],comm);
 
 	//Mix dense_indices with print_indices
 	unsigned int loc,num_to_add;
@@ -809,7 +809,7 @@ int Initialize_Model(Link** system,unsigned int N,unsigned int* my_sys,unsigned 
 
 	//Make sure all procs know the number of dense states at each link
 	for(i=0;i<N;i++)
-		MPI_Bcast(&(system[i]->num_dense),1,MPI_UNSIGNED,assignments[i],MPI_COMM_WORLD);
+		MPI_Bcast(&(system[i]->num_dense),1,MPI_UNSIGNED,assignments[i],comm);
 
 	return 0;
 }
@@ -818,7 +818,7 @@ int Initialize_Model(Link** system,unsigned int N,unsigned int* my_sys,unsigned 
 //Loads the initial conditions.
 //!!!! This assumes what about the dimension??? Wow, I don't think it has to assume anything... !!!!
 //Initial state (0 = .ini, 1 = .uini, 2 = .rec, 3 = .dbc)
-int Load_Initial_Conditions(Link** system,unsigned int N,int* assignments,short int* getting,unsigned int** id_to_loc,UnivVars* GlobalVars,ConnData** db_connections,model* custom_model,void* external)
+int Load_Initial_Conditions(Link** system,unsigned int N,int* assignments,short int* getting,unsigned int** id_to_loc,UnivVars* GlobalVars,ConnData** db_connections,model* custom_model,void* external, MPI_Comm comm)
 {
 	unsigned int i,j,id,loc,no_ini_start,diff_start = 0;
 	FILE* initdata = NULL;
@@ -854,7 +854,7 @@ int Load_Initial_Conditions(Link** system,unsigned int N,int* assignments,short 
 			}
 
 			//Broadcast initial time
-			MPI_Bcast(&(GlobalVars->t_0),1,MPI_DOUBLE,0,MPI_COMM_WORLD);
+			MPI_Bcast(&(GlobalVars->t_0),1,MPI_DOUBLE,0,comm);
 
 			//Read the .ini file
 			who_needs = (short int*) malloc(np*sizeof(short int));
@@ -868,12 +868,12 @@ int Load_Initial_Conditions(Link** system,unsigned int N,int* assignments,short 
 					printf("Error: link id %u in initial condition file, but not in network.\n",id);
 					return 1;
 				}
-				MPI_Bcast(&loc,1,MPI_UNSIGNED,0,MPI_COMM_WORLD);
+				MPI_Bcast(&loc,1,MPI_UNSIGNED,0,comm);
 				
 				//See who needs info about this link.
 				//0 means the proc doesn't need it, 1 means link is assigned to proc, 2 means the link is a ghost to the proc.
 				my_need = (assignments[loc] == my_rank) ? 1 : ((getting[loc]) ? 2 : 0);
-				MPI_Gather(&my_need,1,MPI_SHORT,who_needs,1,MPI_SHORT,0,MPI_COMM_WORLD);
+				MPI_Gather(&my_need,1,MPI_SHORT,who_needs,1,MPI_SHORT,0,comm);
 				if(my_need == 1)
 				{
 					no_ini_start = system[loc]->no_ini_start;
@@ -882,9 +882,9 @@ int Load_Initial_Conditions(Link** system,unsigned int N,int* assignments,short 
 				}
 				else
 				{
-					MPI_Recv(&no_ini_start,1,MPI_UNSIGNED,assignments[loc],1,MPI_COMM_WORLD,MPI_STATUS_IGNORE);
-					MPI_Recv(&diff_start,1,MPI_UNSIGNED,assignments[loc],1,MPI_COMM_WORLD,MPI_STATUS_IGNORE);
-					MPI_Recv(&(y_0->dim),1,MPI_UNSIGNED,assignments[loc],1,MPI_COMM_WORLD,MPI_STATUS_IGNORE);
+					MPI_Recv(&no_ini_start,1,MPI_UNSIGNED,assignments[loc],1,comm,MPI_STATUS_IGNORE);
+					MPI_Recv(&diff_start,1,MPI_UNSIGNED,assignments[loc],1,comm,MPI_STATUS_IGNORE);
+					MPI_Recv(&(y_0->dim),1,MPI_UNSIGNED,assignments[loc],1,comm,MPI_STATUS_IGNORE);
 				}
 
 				//Read init data
@@ -911,12 +911,12 @@ int Load_Initial_Conditions(Link** system,unsigned int N,int* assignments,short 
 				}
 
 				if(assignments[loc] != my_rank)
-					MPI_Send(&(y_0->ve[diff_start]),no_ini_start-diff_start,MPI_DOUBLE,assignments[loc],2,MPI_COMM_WORLD);
+					MPI_Send(&(y_0->ve[diff_start]),no_ini_start-diff_start,MPI_DOUBLE,assignments[loc],2,comm);
 				if(!(getting[loc]))
 				{
 					for(j=0;j<np;j++)	if(who_needs[j] == 2)	break;
 					if(j < np)
-						MPI_Send(&(y_0->ve[diff_start]),no_ini_start-diff_start,MPI_DOUBLE,(int) j,2,MPI_COMM_WORLD);
+						MPI_Send(&(y_0->ve[diff_start]),no_ini_start-diff_start,MPI_DOUBLE,(int) j,2,comm);
 				}
 			}
 
@@ -927,17 +927,17 @@ int Load_Initial_Conditions(Link** system,unsigned int N,int* assignments,short 
 		else
 		{
 			//Get initial time
-			MPI_Bcast(&(GlobalVars->t_0),1,MPI_DOUBLE,0,MPI_COMM_WORLD);
+			MPI_Bcast(&(GlobalVars->t_0),1,MPI_DOUBLE,0,comm);
 
 			who_needs = (short int*) malloc(np*sizeof(short int));
 			for(i=0;i<N;i++)
 			{
 				//Get link location
-				MPI_Bcast(&loc,1,MPI_UNSIGNED,0,MPI_COMM_WORLD);
+				MPI_Bcast(&loc,1,MPI_UNSIGNED,0,comm);
 
 				//Is data needed for this link assigned at this proc?
 				my_need = (assignments[loc] == my_rank) ? 1 : ((getting[loc]) ? 2 : 0);
-				MPI_Gather(&my_need,1,MPI_SHORT,who_needs,1,MPI_SHORT,0,MPI_COMM_WORLD);
+				MPI_Gather(&my_need,1,MPI_SHORT,who_needs,1,MPI_SHORT,0,comm);
 
 				if(my_need)
 				{
@@ -947,13 +947,13 @@ int Load_Initial_Conditions(Link** system,unsigned int N,int* assignments,short 
 
 					if(assignments[loc] == my_rank)
 					{
-						MPI_Send(&no_ini_start,1,MPI_UNSIGNED,0,1,MPI_COMM_WORLD);
-						MPI_Send(&diff_start,1,MPI_UNSIGNED,0,1,MPI_COMM_WORLD);
-						MPI_Send(&(y_0->dim),1,MPI_UNSIGNED,0,1,MPI_COMM_WORLD);	//!!!! Actually, this might be available everywhere now !!!!
+						MPI_Send(&no_ini_start,1,MPI_UNSIGNED,0,1,comm);
+						MPI_Send(&diff_start,1,MPI_UNSIGNED,0,1,comm);
+						MPI_Send(&(y_0->dim),1,MPI_UNSIGNED,0,1,comm);	//!!!! Actually, this might be available everywhere now !!!!
 					}
 
 					y_0->ve = (double*) realloc(y_0->ve,y_0->dim*sizeof(double));
-					MPI_Recv(&(y_0->ve[diff_start]),no_ini_start-diff_start,MPI_DOUBLE,0,2,MPI_COMM_WORLD,MPI_STATUS_IGNORE);
+					MPI_Recv(&(y_0->ve[diff_start]),no_ini_start-diff_start,MPI_DOUBLE,0,2,comm,MPI_STATUS_IGNORE);
 
 					if(custom_model)
 						system[loc]->state = custom_model->InitializeEqs(GlobalVars->global_params,system[loc]->params,system[loc]->qvs,system[loc]->dam,y_0,GlobalVars->type,diff_start,no_ini_start,system[loc]->user,external);
@@ -993,7 +993,7 @@ int Load_Initial_Conditions(Link** system,unsigned int N,int* assignments,short 
 		}
 
 		//Broadcast the initial time
-		MPI_Bcast(&(GlobalVars->t_0),1,MPI_DOUBLE,0,MPI_COMM_WORLD);
+		MPI_Bcast(&(GlobalVars->t_0),1,MPI_DOUBLE,0,comm);
 
 		//Get number of values to read from disk (and error checking)
 		for(i=0;i<N;i++)
@@ -1039,7 +1039,7 @@ int Load_Initial_Conditions(Link** system,unsigned int N,int* assignments,short 
 			fclose(initdata);
 		}
 
-		MPI_Bcast(y_0_backup->ve,no_ini_start-diff_start,MPI_DOUBLE,0,MPI_COMM_WORLD);
+		MPI_Bcast(y_0_backup->ve,no_ini_start-diff_start,MPI_DOUBLE,0,comm);
 
 		//VEC* y_0_backup = v_get(y_0->dim);
 		//v_copy(y_0,y_0_backup);
@@ -1093,7 +1093,7 @@ int Load_Initial_Conditions(Link** system,unsigned int N,int* assignments,short 
 			}
 
 			//Broadcast the initial time
-			MPI_Bcast(&(GlobalVars->t_0),1,MPI_DOUBLE,0,MPI_COMM_WORLD);
+			MPI_Bcast(&(GlobalVars->t_0),1,MPI_DOUBLE,0,comm);
 
 			//Read the .rec file
 			who_needs = (short int*) malloc(np*sizeof(short int));
@@ -1107,16 +1107,16 @@ int Load_Initial_Conditions(Link** system,unsigned int N,int* assignments,short 
 					printf("Error: link id %u in initial condition file, but not in network.\n",id);
 					return 1;
 				}
-				MPI_Bcast(&loc,1,MPI_UNSIGNED,0,MPI_COMM_WORLD);
+				MPI_Bcast(&loc,1,MPI_UNSIGNED,0,comm);
 				
 				//See who needs info about this link.
 				//0 means the proc doesn't need it, 1 means link is assigned to proc, 2 means the link is a ghost to the proc.
 				my_need = (assignments[loc] == my_rank) ? 1 : ((getting[loc]) ? 2 : 0);
-				MPI_Gather(&my_need,1,MPI_SHORT,who_needs,1,MPI_SHORT,0,MPI_COMM_WORLD);
+				MPI_Gather(&my_need,1,MPI_SHORT,who_needs,1,MPI_SHORT,0,comm);
 				if(my_need == 1)
 					y_0->dim = system[loc]->dim;
 				else
-					MPI_Recv(&(y_0->dim),1,MPI_UNSIGNED,assignments[loc],1,MPI_COMM_WORLD,MPI_STATUS_IGNORE);
+					MPI_Recv(&(y_0->dim),1,MPI_UNSIGNED,assignments[loc],1,comm,MPI_STATUS_IGNORE);
 
 				//Read init data
 				y_0->ve = (double*) realloc(y_0->ve,y_0->dim*sizeof(double));
@@ -1140,12 +1140,12 @@ int Load_Initial_Conditions(Link** system,unsigned int N,int* assignments,short 
 				}
 
 				if(assignments[loc] != my_rank)
-					MPI_Send(y_0->ve,y_0->dim,MPI_DOUBLE,assignments[loc],2,MPI_COMM_WORLD);
+					MPI_Send(y_0->ve,y_0->dim,MPI_DOUBLE,assignments[loc],2,comm);
 				if(!(getting[loc]))
 				{
 					for(j=0;j<np;j++)	if(who_needs[j] == 2)	break;
 					if(j < np)
-						MPI_Send(y_0->ve,y_0->dim,MPI_DOUBLE,(int) j,2,MPI_COMM_WORLD);
+						MPI_Send(y_0->ve,y_0->dim,MPI_DOUBLE,(int) j,2,comm);
 				}
 			}
 
@@ -1156,26 +1156,26 @@ int Load_Initial_Conditions(Link** system,unsigned int N,int* assignments,short 
 		else
 		{
 			//Get the initial time
-			MPI_Bcast(&(GlobalVars->t_0),1,MPI_DOUBLE,0,MPI_COMM_WORLD);
+			MPI_Bcast(&(GlobalVars->t_0),1,MPI_DOUBLE,0,comm);
 
 			for(i=0;i<N;i++)
 			{
 				//Get link location
-				MPI_Bcast(&loc,1,MPI_UNSIGNED,0,MPI_COMM_WORLD);
+				MPI_Bcast(&loc,1,MPI_UNSIGNED,0,comm);
 
 				//Is data needed for this link assigned at this proc?
 				my_need = (assignments[loc] == my_rank) ? 1 : ((getting[loc]) ? 2 : 0);
-				MPI_Gather(&my_need,1,MPI_SHORT,who_needs,1,MPI_SHORT,0,MPI_COMM_WORLD);
+				MPI_Gather(&my_need,1,MPI_SHORT,who_needs,1,MPI_SHORT,0,comm);
 
 				if(my_need)
 				{
 					y_0->dim = system[loc]->dim;
 
 					if(assignments[loc] == my_rank)
-						MPI_Send(&(y_0->dim),1,MPI_UNSIGNED,0,1,MPI_COMM_WORLD);
+						MPI_Send(&(y_0->dim),1,MPI_UNSIGNED,0,1,comm);
 
 					y_0->ve = (double*) realloc(y_0->ve,y_0->dim*sizeof(double));
-					MPI_Recv(y_0->ve,y_0->dim,MPI_DOUBLE,0,2,MPI_COMM_WORLD,MPI_STATUS_IGNORE);
+					MPI_Recv(y_0->ve,y_0->dim,MPI_DOUBLE,0,2,comm,MPI_STATUS_IGNORE);
 
 					if(system[loc]->state_check)
 						system[loc]->state = system[loc]->state_check(y_0,GlobalVars->global_params,system[loc]->params,system[loc]->qvs,system[loc]->dam);
@@ -1218,7 +1218,7 @@ int Load_Initial_Conditions(Link** system,unsigned int N,int* assignments,short 
 			//Get dim
 			y_0->dim = PQnfields(res) - 1;
 			y_0->ve = (double*) realloc(y_0->ve,y_0->dim*sizeof(double));
-			MPI_Bcast(&(y_0->dim),1,MPI_UNSIGNED,0,MPI_COMM_WORLD);
+			MPI_Bcast(&(y_0->dim),1,MPI_UNSIGNED,0,comm);
 			who_needs = (short int*) malloc(np*sizeof(short int));
 
 			//Read data
@@ -1226,12 +1226,12 @@ int Load_Initial_Conditions(Link** system,unsigned int N,int* assignments,short 
 			{
 				loc = find_link_by_idtoloc(atoi(PQgetvalue(res,i,0)),id_to_loc,N);
 				for(j=0;j<y_0->dim;j++)	y_0->ve[j] = atof(PQgetvalue(res,i,j+1));
-				MPI_Bcast(&loc,1,MPI_UNSIGNED,0,MPI_COMM_WORLD);
+				MPI_Bcast(&loc,1,MPI_UNSIGNED,0,comm);
 
 				//See who needs info about this link.
 				//0 means the proc doesn't need it, 1 means link is assigned to proc, 2 means the link is a ghost to the proc.
 				my_need = (assignments[loc] == my_rank) ? 1 : ((getting[loc]) ? 2 : 0);
-				MPI_Gather(&my_need,1,MPI_SHORT,who_needs,1,MPI_SHORT,0,MPI_COMM_WORLD);
+				MPI_Gather(&my_need,1,MPI_SHORT,who_needs,1,MPI_SHORT,0,comm);
 
 				//Send the data
 				if(assignments[loc] == my_rank || getting[loc])
@@ -1244,11 +1244,11 @@ int Load_Initial_Conditions(Link** system,unsigned int N,int* assignments,short 
 				}
 
 				if(assignments[loc] != my_rank)
-					MPI_Send(y_0->ve,y_0->dim,MPI_DOUBLE,assignments[loc],2,MPI_COMM_WORLD);
+					MPI_Send(y_0->ve,y_0->dim,MPI_DOUBLE,assignments[loc],2,comm);
 				if(!(getting[loc]))
 				{
 					for(j=0;j<np;j++)	if(who_needs[j] == 2)	break;
-					if(j < np)	MPI_Send(y_0->ve,y_0->dim,MPI_DOUBLE,(int) j,2,MPI_COMM_WORLD);
+					if(j < np)	MPI_Send(y_0->ve,y_0->dim,MPI_DOUBLE,(int) j,2,comm);
 				}
 			}
 
@@ -1261,21 +1261,21 @@ int Load_Initial_Conditions(Link** system,unsigned int N,int* assignments,short 
 		else
 		{
 			//Get dim
-			MPI_Bcast(&(y_0->dim),1,MPI_UNSIGNED,0,MPI_COMM_WORLD);
+			MPI_Bcast(&(y_0->dim),1,MPI_UNSIGNED,0,comm);
 			y_0->ve = (double*) realloc(y_0->ve,y_0->dim*sizeof(double));
 
 			for(i=0;i<N;i++)
 			{
 				//Get link location
-				MPI_Bcast(&loc,1,MPI_UNSIGNED,0,MPI_COMM_WORLD);
+				MPI_Bcast(&loc,1,MPI_UNSIGNED,0,comm);
 
 				//Is data needed for this link assigned at this proc?
 				my_need = (assignments[loc] == my_rank) ? 1 : ((getting[loc]) ? 2 : 0);
-				MPI_Gather(&my_need,1,MPI_SHORT,who_needs,1,MPI_SHORT,0,MPI_COMM_WORLD);
+				MPI_Gather(&my_need,1,MPI_SHORT,who_needs,1,MPI_SHORT,0,comm);
 
 				if(my_need)
 				{
-					MPI_Recv(y_0->ve,y_0->dim,MPI_DOUBLE,0,2,MPI_COMM_WORLD,MPI_STATUS_IGNORE);
+					MPI_Recv(y_0->ve,y_0->dim,MPI_DOUBLE,0,2,comm,MPI_STATUS_IGNORE);
 
 					if(system[loc]->state_check != NULL)
 						system[loc]->state = system[loc]->state_check(y_0,GlobalVars->global_params,system[loc]->params,system[loc]->qvs,system[loc]->dam);
@@ -1295,7 +1295,7 @@ int Load_Initial_Conditions(Link** system,unsigned int N,int* assignments,short 
 
 
 //Loads the forcing data specified in the global file.
-int Load_Forcings(Link** system,unsigned int N,unsigned int* my_sys,unsigned int my_N,int* assignments,short int* getting,unsigned int* res_list,unsigned int res_size,unsigned int** id_to_loc,UnivVars* GlobalVars,Forcing** forcings,ConnData** db_connections)
+int Load_Forcings(Link** system,unsigned int N,unsigned int* my_sys,unsigned int my_N,int* assignments,short int* getting,unsigned int* res_list,unsigned int res_size,unsigned int** id_to_loc,UnivVars* GlobalVars,Forcing** forcings,ConnData** db_connections, MPI_Comm comm)
 {
 	unsigned int i,j,l,m,limit,id,loc;
 	FILE* forcingfile = NULL;
@@ -1369,7 +1369,7 @@ int Load_Forcings(Link** system,unsigned int N,unsigned int* my_sys,unsigned int
 			}
 
 			//Get total number of links with data
-			MPI_Bcast(&limit,1,MPI_UNSIGNED,0,MPI_COMM_WORLD);
+			MPI_Bcast(&limit,1,MPI_UNSIGNED,0,comm);
 
 			//Setup buffers at each link
 			for(i=0;i<limit;i++)
@@ -1395,21 +1395,21 @@ int Load_Forcings(Link** system,unsigned int N,unsigned int* my_sys,unsigned int
 					buffer[2*j+1] = -1.0;
 
 					//Send data
-					MPI_Bcast(&loc,1,MPI_UNSIGNED,0,MPI_COMM_WORLD);
+					MPI_Bcast(&loc,1,MPI_UNSIGNED,0,comm);
 					if(assignments[loc] != my_rank)
 					{
-						MPI_Send(&m,1,MPI_UNSIGNED,assignments[loc],1,MPI_COMM_WORLD);
-						MPI_Send(buffer,2*m,MPI_DOUBLE,assignments[loc],1,MPI_COMM_WORLD);
+						MPI_Send(&m,1,MPI_UNSIGNED,assignments[loc],1,comm);
+						MPI_Send(buffer,2*m,MPI_DOUBLE,assignments[loc],1,comm);
 					}
 				}
 				else
 				{
-					MPI_Bcast(&loc,1,MPI_UNSIGNED,0,MPI_COMM_WORLD);
+					MPI_Bcast(&loc,1,MPI_UNSIGNED,0,comm);
 					if(assignments[loc] == my_rank)
 					{
-						MPI_Recv(&m,1,MPI_UNSIGNED,0,1,MPI_COMM_WORLD,MPI_STATUS_IGNORE);
+						MPI_Recv(&m,1,MPI_UNSIGNED,0,1,comm,MPI_STATUS_IGNORE);
 						buffer = (double*) realloc(buffer,2*m*sizeof(double));
-						MPI_Recv(buffer,2*m,MPI_DOUBLE,0,1,MPI_COMM_WORLD,MPI_STATUS_IGNORE);
+						MPI_Recv(buffer,2*m,MPI_DOUBLE,0,1,comm,MPI_STATUS_IGNORE);
 					}
 				}
 
@@ -1638,22 +1638,22 @@ int Load_Forcings(Link** system,unsigned int N,unsigned int* my_sys,unsigned int
 			}
 
 			//Broadcast data
-			MPI_Bcast(&(forcings[l]->file_time),1,MPI_DOUBLE,0,MPI_COMM_WORLD);
-			MPI_Bcast(&(forcings[l]->factor),1,MPI_DOUBLE,0,MPI_COMM_WORLD);
-			MPI_Bcast(&(forcings[l]->num_cells),1,MPI_UNSIGNED,0,MPI_COMM_WORLD);
+			MPI_Bcast(&(forcings[l]->file_time),1,MPI_DOUBLE,0,comm);
+			MPI_Bcast(&(forcings[l]->factor),1,MPI_DOUBLE,0,comm);
+			MPI_Bcast(&(forcings[l]->num_cells),1,MPI_UNSIGNED,0,comm);
 			if(my_rank != 0)
 			{
 				forcings[l]->grid_to_linkid = (unsigned int**) malloc(forcings[l]->num_cells*sizeof(unsigned int*));
 				forcings[l]->num_links_in_grid = (unsigned int*) malloc(forcings[l]->num_cells*sizeof(unsigned int*));
 			}
-			MPI_Bcast(forcings[l]->num_links_in_grid,forcings[l]->num_cells,MPI_UNSIGNED,0,MPI_COMM_WORLD);
+			MPI_Bcast(forcings[l]->num_links_in_grid,forcings[l]->num_cells,MPI_UNSIGNED,0,comm);
 			if(my_rank != 0)
 			{
 				for(i=0;i<forcings[l]->num_cells;i++)
 					forcings[l]->grid_to_linkid[i] = (unsigned int*) malloc(forcings[l]->num_links_in_grid[i]*sizeof(unsigned int));
 			}
 			for(i=0;i<forcings[l]->num_cells;i++)
-				MPI_Bcast(forcings[l]->grid_to_linkid[i],forcings[l]->num_links_in_grid[i],MPI_UNSIGNED,0,MPI_COMM_WORLD);
+				MPI_Bcast(forcings[l]->grid_to_linkid[i],forcings[l]->num_links_in_grid[i],MPI_UNSIGNED,0,comm);
 
 			forcings[l]->received = (char*) malloc(forcings[l]->num_cells*sizeof(char));
 			forcings[l]->intensities = (float*) malloc(forcings[l]->num_cells*sizeof(float));
@@ -1704,12 +1704,12 @@ int Load_Forcings(Link** system,unsigned int N,unsigned int* my_sys,unsigned int
 				DisconnectPGDB(db_connections[ASYNCH_DB_LOC_FORCING_START+l]);
 			}
 
-			MPI_Bcast(&is_null,1,MPI_INT,0,MPI_COMM_WORLD);
+			MPI_Bcast(&is_null,1,MPI_INT,0,comm);
 			if(is_null)
 				forcings[l]->good_timestamp = forcings[l]->raindb_start_time;
 			else
 			{
-				MPI_Bcast(&good_time,1,MPI_INT,0,MPI_COMM_WORLD);
+				MPI_Bcast(&good_time,1,MPI_INT,0,comm);
 				forcings[l]->good_timestamp = good_time;
 			}
 
@@ -1782,10 +1782,10 @@ int Load_Forcings(Link** system,unsigned int N,unsigned int* my_sys,unsigned int
 				fclose(forcingfile);
 			}
 
-			MPI_Bcast(&m,1,MPI_UNSIGNED,0,MPI_COMM_WORLD);
+			MPI_Bcast(&m,1,MPI_UNSIGNED,0,comm);
 			if(my_rank != 0)
 				buffer = (double*) realloc(buffer,2*m*sizeof(double));
-			MPI_Bcast(buffer,2*m,MPI_DOUBLE,0,MPI_COMM_WORLD);
+			MPI_Bcast(buffer,2*m,MPI_DOUBLE,0,comm);
 
 			//Create a global forcing object
 			forcings[l]->GlobalForcing = (ForcingData*) malloc(sizeof(ForcingData));
@@ -1854,7 +1854,7 @@ int Load_Forcings(Link** system,unsigned int N,unsigned int* my_sys,unsigned int
 				fclose(forcingfile);
 			}
 
-			MPI_Bcast(buffer,num_months,MPI_DOUBLE,0,MPI_COMM_WORLD);
+			MPI_Bcast(buffer,num_months,MPI_DOUBLE,0,comm);
 
 			//Create a global forcing object
 			forcings[l]->GlobalForcing = (ForcingData*) malloc(sizeof(ForcingData));
@@ -1906,7 +1906,7 @@ int Load_Forcings(Link** system,unsigned int N,unsigned int* my_sys,unsigned int
 		forcings[GlobalVars->res_forcing_idx]->iteration = start_iteration;	//Keep this the same
 
 		//Setup init condition at links with forcing
-		Exchange_InitState_At_Forced(system,N,assignments,getting,res_list,res_size,id_to_loc,GlobalVars);
+		Exchange_InitState_At_Forced(system,N,assignments,getting,res_list,res_size,id_to_loc,GlobalVars,comm);
 	}
 
 	//Clean up
@@ -1916,7 +1916,7 @@ int Load_Forcings(Link** system,unsigned int N,unsigned int* my_sys,unsigned int
 
 
 //Reads any dam sources. Sets up appropriate buffers. Also sets flag for reservoirs.
-int Load_Dams(Link** system,unsigned int N,unsigned int* my_sys,unsigned int my_N,int* assignments,short int* getting,unsigned int** id_to_loc,UnivVars* GlobalVars,ErrorData* GlobalErrors,ConnData** db_connections,unsigned int** res_list,unsigned int* res_size,unsigned int* my_res_size)
+int Load_Dams(Link** system,unsigned int N,unsigned int* my_sys,unsigned int my_N,int* assignments,short int* getting,unsigned int** id_to_loc,UnivVars* GlobalVars,ErrorData* GlobalErrors,ConnData** db_connections,unsigned int** res_list,unsigned int* res_size,unsigned int* my_res_size, MPI_Comm comm)
 {
 	unsigned int i,j,k,m,num_dams,id,size,num_values;
 	int error;
@@ -1938,8 +1938,8 @@ int Load_Dams(Link** system,unsigned int N,unsigned int* my_sys,unsigned int my_
 		int not_needed = -1;
 		for(i=0;i<N;i++)
 		{
-			if(getting[i])	MPI_Reduce(&my_rank,&(needs[i]),1,MPI_INT,MPI_MAX,0,MPI_COMM_WORLD);
-			else		MPI_Reduce(&not_needed,&(needs[i]),1,MPI_INT,MPI_MAX,0,MPI_COMM_WORLD);
+			if(getting[i])	MPI_Reduce(&my_rank,&(needs[i]),1,MPI_INT,MPI_MAX,0,comm);
+			else		MPI_Reduce(&not_needed,&(needs[i]),1,MPI_INT,MPI_MAX,0,comm);
 		}
 
 		if(my_rank == 0)
@@ -1958,7 +1958,7 @@ int Load_Dams(Link** system,unsigned int N,unsigned int* my_sys,unsigned int my_
 			}
 
 			fscanf(damfile,"%u",&num_dams);
-			MPI_Bcast(&num_dams,1,MPI_UNSIGNED,0,MPI_COMM_WORLD);
+			MPI_Bcast(&num_dams,1,MPI_UNSIGNED,0,comm);
 
 			for(i=0;i<num_dams;i++)
 			{
@@ -1973,7 +1973,7 @@ int Load_Dams(Link** system,unsigned int N,unsigned int* my_sys,unsigned int my_
 				for(j=0;j<size;j++)
 					fscanf(damfile,"%lf",&(buffer[j]));
 
-				MPI_Bcast(&m,1,MPI_UNSIGNED,0,MPI_COMM_WORLD);
+				MPI_Bcast(&m,1,MPI_UNSIGNED,0,comm);
 				
 				//Either store the parameters or send them
 				if(my_rank == assignments[m] || my_rank == needs[m])
@@ -1987,10 +1987,10 @@ int Load_Dams(Link** system,unsigned int N,unsigned int* my_sys,unsigned int my_
 				}
 
 				if(my_rank != assignments[m])
-					MPI_Send(buffer,size,MPI_DOUBLE,assignments[m],1,MPI_COMM_WORLD);
+					MPI_Send(buffer,size,MPI_DOUBLE,assignments[m],1,comm);
 
 				if(needs[m] > 0)
-					MPI_Send(buffer,size,MPI_DOUBLE,needs[m],1,MPI_COMM_WORLD);
+					MPI_Send(buffer,size,MPI_DOUBLE,needs[m],1,comm);
 			}
 
 			fclose(damfile);
@@ -1998,14 +1998,14 @@ int Load_Dams(Link** system,unsigned int N,unsigned int* my_sys,unsigned int my_
 		}
 		else
 		{
-			MPI_Bcast(&num_dams,1,MPI_UNSIGNED,0,MPI_COMM_WORLD);
+			MPI_Bcast(&num_dams,1,MPI_UNSIGNED,0,comm);
 
 			for(i=0;i<num_dams;i++)
 			{
-				MPI_Bcast(&m,1,MPI_UNSIGNED,0,MPI_COMM_WORLD);
+				MPI_Bcast(&m,1,MPI_UNSIGNED,0,comm);
 				if(my_rank == assignments[m] || getting[m])
 				{
-					MPI_Recv(buffer,size,MPI_DOUBLE,0,1,MPI_COMM_WORLD,MPI_STATUS_IGNORE);
+					MPI_Recv(buffer,size,MPI_DOUBLE,0,1,comm,MPI_STATUS_IGNORE);
 
 					system[m]->params->ve = (double*) realloc(system[m]->params->ve,GlobalVars->dam_params_size*sizeof(double));
 					system[m]->params->dim = GlobalVars->dam_params_size;
@@ -2041,8 +2041,8 @@ int Load_Dams(Link** system,unsigned int N,unsigned int* my_sys,unsigned int my_
 		int not_needed = -1;
 		for(i=0;i<N;i++)
 		{
-			if(getting[i])	MPI_Reduce(&my_rank,&(needs[i]),1,MPI_INT,MPI_MAX,0,MPI_COMM_WORLD);
-			else		MPI_Reduce(&not_needed,&(needs[i]),1,MPI_INT,MPI_MAX,0,MPI_COMM_WORLD);
+			if(getting[i])	MPI_Reduce(&my_rank,&(needs[i]),1,MPI_INT,MPI_MAX,0,comm);
+			else		MPI_Reduce(&not_needed,&(needs[i]),1,MPI_INT,MPI_MAX,0,comm);
 		}
 
 		if(my_rank == 0)
@@ -2061,7 +2061,7 @@ int Load_Dams(Link** system,unsigned int N,unsigned int* my_sys,unsigned int my_
 			}
 		
 			fscanf(damfile,"%u",&num_dams);
-			MPI_Bcast(&num_dams,1,MPI_UNSIGNED,0,MPI_COMM_WORLD);
+			MPI_Bcast(&num_dams,1,MPI_UNSIGNED,0,comm);
 
 			for(i=0;i<num_dams;i++)
 			{
@@ -2080,7 +2080,7 @@ int Load_Dams(Link** system,unsigned int N,unsigned int* my_sys,unsigned int my_
 					fscanf(damfile,"%lf %lf",&(buffer[2*j]),&(buffer[2*j+1]));
 
 				//Send location
-				MPI_Bcast(&m,1,MPI_UNSIGNED,0,MPI_COMM_WORLD);
+				MPI_Bcast(&m,1,MPI_UNSIGNED,0,comm);
 				
 				//Either store the parameters or send them
 				if(my_rank == assignments[m] || getting[m])
@@ -2101,14 +2101,14 @@ int Load_Dams(Link** system,unsigned int N,unsigned int* my_sys,unsigned int my_
 
 				if(my_rank != assignments[m])
 				{
-					MPI_Send(&num_values,1,MPI_UNSIGNED,assignments[m],1,MPI_COMM_WORLD);
-					MPI_Send(buffer,2*num_values,MPI_DOUBLE,assignments[m],1,MPI_COMM_WORLD);
+					MPI_Send(&num_values,1,MPI_UNSIGNED,assignments[m],1,comm);
+					MPI_Send(buffer,2*num_values,MPI_DOUBLE,assignments[m],1,comm);
 				}
 
 				if(needs[m] > 0)
 				{
-					MPI_Send(&num_values,1,MPI_UNSIGNED,needs[m],1,MPI_COMM_WORLD);
-					MPI_Send(buffer,2*num_values,MPI_DOUBLE,needs[m],1,MPI_COMM_WORLD);
+					MPI_Send(&num_values,1,MPI_UNSIGNED,needs[m],1,comm);
+					MPI_Send(buffer,2*num_values,MPI_DOUBLE,needs[m],1,comm);
 				}
 			}
 
@@ -2117,16 +2117,16 @@ int Load_Dams(Link** system,unsigned int N,unsigned int* my_sys,unsigned int my_
 		}
 		else
 		{
-			MPI_Bcast(&num_dams,1,MPI_UNSIGNED,0,MPI_COMM_WORLD);
+			MPI_Bcast(&num_dams,1,MPI_UNSIGNED,0,comm);
 
 			for(i=0;i<num_dams;i++)
 			{
-				MPI_Bcast(&m,1,MPI_UNSIGNED,0,MPI_COMM_WORLD);
+				MPI_Bcast(&m,1,MPI_UNSIGNED,0,comm);
 				if(my_rank == assignments[m] || getting[m])
 				{
-					MPI_Recv(&num_values,1,MPI_UNSIGNED,0,1,MPI_COMM_WORLD,MPI_STATUS_IGNORE);
+					MPI_Recv(&num_values,1,MPI_UNSIGNED,0,1,comm,MPI_STATUS_IGNORE);
 					buffer = (double*) realloc(buffer,2*num_values*sizeof(double));
-					MPI_Recv(buffer,2*num_values,MPI_DOUBLE,0,1,MPI_COMM_WORLD,MPI_STATUS_IGNORE);
+					MPI_Recv(buffer,2*num_values,MPI_DOUBLE,0,1,comm,MPI_STATUS_IGNORE);
 
 					system[m]->dam = 1;
 					system[m]->qvs = (QVSData*) malloc(sizeof(QVSData));
@@ -2211,17 +2211,17 @@ int Load_Dams(Link** system,unsigned int N,unsigned int* my_sys,unsigned int my_
 				if(curr_loc < N)
 				{
 					//Tell everyone what link has the current dam
-					MPI_Bcast(&curr_loc,1,MPI_INT,0,MPI_COMM_WORLD);
+					MPI_Bcast(&curr_loc,1,MPI_INT,0,comm);
 					mine = (my_rank == assignments[curr_loc] || getting[curr_loc]);
-					MPI_Gather(&mine,1,MPI_SHORT,procs_sending_to,1,MPI_SHORT,0,MPI_COMM_WORLD);
+					MPI_Gather(&mine,1,MPI_SHORT,procs_sending_to,1,MPI_SHORT,0,comm);
 
 					//Send the data to whoever needs it
 					for(j=1;j<np;j++)
 					{
 						if(procs_sending_to[j])
 						{
-							MPI_Send(&num_values,1,MPI_UNSIGNED,j,0,MPI_COMM_WORLD);
-							MPI_Send(array_holder,2*num_values,MPI_DOUBLE,j,0,MPI_COMM_WORLD);
+							MPI_Send(&num_values,1,MPI_UNSIGNED,j,0,comm);
+							MPI_Send(array_holder,2*num_values,MPI_DOUBLE,j,0,comm);
 						}
 					}
 
@@ -2249,25 +2249,25 @@ int Load_Dams(Link** system,unsigned int N,unsigned int* my_sys,unsigned int my_
 			PQclear(res);
 			DisconnectPGDB(db_connections[ASYNCH_DB_LOC_QVS]);
 			curr_loc = -1;
-			MPI_Bcast(&curr_loc,1,MPI_INT,0,MPI_COMM_WORLD);
+			MPI_Bcast(&curr_loc,1,MPI_INT,0,comm);
 		}
 		else	//Receive dam data
 		{
 			curr_loc = 0;
-			MPI_Bcast(&curr_loc,1,MPI_INT,0,MPI_COMM_WORLD);
+			MPI_Bcast(&curr_loc,1,MPI_INT,0,comm);
 
 			while((int)curr_loc != -1)
 			{
 				//Check if I need the data for this link
 				mine = (my_rank == assignments[curr_loc] || getting[curr_loc]);
-				MPI_Gather(&mine,1,MPI_SHORT,procs_sending_to,1,MPI_SHORT,0,MPI_COMM_WORLD);
+				MPI_Gather(&mine,1,MPI_SHORT,procs_sending_to,1,MPI_SHORT,0,comm);
 
 				//Receive data
 				if(mine)
 				{
-					MPI_Recv(&num_values,1,MPI_UNSIGNED,0,0,MPI_COMM_WORLD,MPI_STATUS_IGNORE);
+					MPI_Recv(&num_values,1,MPI_UNSIGNED,0,0,comm,MPI_STATUS_IGNORE);
 					array_holder = (double*) malloc(2*num_values*sizeof(double));
-					MPI_Recv(array_holder,2*num_values,MPI_DOUBLE,0,0,MPI_COMM_WORLD,MPI_STATUS_IGNORE);
+					MPI_Recv(array_holder,2*num_values,MPI_DOUBLE,0,0,comm,MPI_STATUS_IGNORE);
 					current = system[curr_loc];
 					current->dam = 1;
 					current->qvs = (QVSData*) malloc(sizeof(QVSData));
@@ -2278,7 +2278,7 @@ int Load_Dams(Link** system,unsigned int N,unsigned int* my_sys,unsigned int my_
 				}
 
 				//Check next signal
-				MPI_Bcast(&curr_loc,1,MPI_INT,0,MPI_COMM_WORLD);
+				MPI_Bcast(&curr_loc,1,MPI_INT,0,comm);
 			}
 		}
 
@@ -2315,7 +2315,7 @@ int Load_Dams(Link** system,unsigned int N,unsigned int* my_sys,unsigned int my_
 	*my_res_size = 0;
 	if(GlobalVars->res_flag)
 	{
-		if(Create_SAV_Data(GlobalVars->rsv_filename,system,N,res_list,res_size,db_connections[ASYNCH_DB_LOC_RSV],GlobalVars->res_flag))
+		if(Create_SAV_Data(GlobalVars->rsv_filename,system,N,res_list,res_size,db_connections[ASYNCH_DB_LOC_RSV],GlobalVars->res_flag,comm))
 			return 1;
 
 		//Setup links with forcing
@@ -2375,7 +2375,7 @@ int CalculateInitialStepSizes(Link** system,unsigned int* my_sys,unsigned int my
 //Reads the link ids for saving data.
 //Sets in GlobalVars: save_list, save_size, peaksave_list, peaksave_size.
 //Also sets: my_save_size.
-int BuildSaveLists(Link** system,unsigned int N,unsigned int* my_sys,unsigned int my_N,unsigned int* assignments,unsigned int** id_to_loc,UnivVars* GlobalVars,unsigned int** save_list,unsigned int* save_size,unsigned int* my_save_size,unsigned int** peaksave_list,unsigned int* peaksave_size,unsigned int* my_peaksave_size,ConnData** db_connections)
+int BuildSaveLists(Link** system,unsigned int N,unsigned int* my_sys,unsigned int my_N,unsigned int* assignments,unsigned int** id_to_loc,UnivVars* GlobalVars,unsigned int** save_list,unsigned int* save_size,unsigned int* my_save_size,unsigned int** peaksave_list,unsigned int* peaksave_size,unsigned int* my_peaksave_size,ConnData** db_connections, MPI_Comm comm)
 {
 	unsigned int i,j,k;
 	Link* current;
@@ -2390,7 +2390,7 @@ int BuildSaveLists(Link** system,unsigned int N,unsigned int* my_sys,unsigned in
 	*my_save_size = 0;
 	if(GlobalVars->hydros_loc_flag)
 	{
-		if(Create_SAV_Data(GlobalVars->hydrosave_filename,system,N,save_list,save_size,db_connections[ASYNCH_DB_LOC_HYDROSAVE],GlobalVars->hydrosave_flag))
+		if(Create_SAV_Data(GlobalVars->hydrosave_filename,system,N,save_list,save_size,db_connections[ASYNCH_DB_LOC_HYDROSAVE],GlobalVars->hydrosave_flag,comm))
 			return 1;
 
 		for(j=0;j<*save_size;j++)
@@ -2431,7 +2431,7 @@ int BuildSaveLists(Link** system,unsigned int N,unsigned int* my_sys,unsigned in
 	*my_peaksave_size = 0;
 	if(GlobalVars->peaks_loc_flag)
 	{
-		if(Create_SAV_Data(GlobalVars->peaksave_filename,system,N,peaksave_list,peaksave_size,db_connections[ASYNCH_DB_LOC_PEAKSAVE],GlobalVars->peaksave_flag))
+		if(Create_SAV_Data(GlobalVars->peaksave_filename,system,N,peaksave_list,peaksave_size,db_connections[ASYNCH_DB_LOC_PEAKSAVE],GlobalVars->peaksave_flag,comm))
 			return 1;
 
 		for(j=0;j<*peaksave_size;j++)
@@ -2594,7 +2594,7 @@ int FinalizeSystem(Link** system,unsigned int N,unsigned int* my_sys,unsigned in
 //PGconn** conn:	NULL pointer that will be set to an SQL database, if needed.
 //char* rkdfilename (set by this method): Will be the filename of the .rkd file, if the error data is not global.
 //Returns a UnivVars that contains all the global data read in from the file globalfilename.
-UnivVars* Read_Global_Data(char globalfilename[],ErrorData** GlobalErrors,Forcing** forcings,ConnData** db_connections,char* rkdfilename,model* custom_model,void* external)
+UnivVars* Read_Global_Data(char globalfilename[],ErrorData** GlobalErrors,Forcing** forcings,ConnData** db_connections,char* rkdfilename,model* custom_model,void* external, MPI_Comm comm)
 {
 	unsigned int i,j,k,total,written;
 	int flag,valsread;
@@ -2629,37 +2629,37 @@ UnivVars* Read_Global_Data(char globalfilename[],ErrorData** GlobalErrors,Forcin
 	GlobalVars->rain_filename = NULL;
 
 	//Grab the type and maxtime
-	ReadLineFromTextFile(globalfile,linebuffer,buff_size,string_size);
+	ReadLineFromTextFile(globalfile,linebuffer,buff_size,string_size,comm);
 	valsread = sscanf(linebuffer,"%hu %lf",&(GlobalVars->type),&(GlobalVars->maxtime));
 	if(ReadLineError(valsread,2,"type and maxtime"))	return NULL;
 
 	//Grab the output filename info
-	ReadLineFromTextFile(globalfile,linebuffer,buff_size,string_size);
+	ReadLineFromTextFile(globalfile,linebuffer,buff_size,string_size,comm);
 	valsread = sscanf(linebuffer,"%hu",&(GlobalVars->print_par_flag));
 	if(ReadLineError(valsread,1,"to print filename parameters"))	return NULL;
 
 	//Grab components to print
-	ReadLineFromTextFile(globalfile,linebuffer,buff_size,string_size);
+	ReadLineFromTextFile(globalfile,linebuffer,buff_size,string_size,comm);
 	valsread = sscanf(linebuffer,"%u",&(GlobalVars->num_print));
 	if(ReadLineError(valsread,1,"number of indices to print"))	return NULL;
 	GlobalVars->output_names = (char**) malloc(GlobalVars->num_print*sizeof(char*));
 	for(i=0;i<GlobalVars->num_print;i++)
 	{
 		GlobalVars->output_names[i] = (char*) malloc(string_size*sizeof(char));
-		ReadLineFromTextFile(globalfile,linebuffer,buff_size,string_size);
+		ReadLineFromTextFile(globalfile,linebuffer,buff_size,string_size,comm);
 		valsread = sscanf(linebuffer,"%s",GlobalVars->output_names[i]);
 		if(ReadLineError(valsread,1,"a component to print"))	return NULL;
 	}
 
 	//Peakflow function
 	GlobalVars->peakflow_function_name = (char*) malloc(string_size*sizeof(char));
-	ReadLineFromTextFile(globalfile,linebuffer,buff_size,string_size);
+	ReadLineFromTextFile(globalfile,linebuffer,buff_size,string_size,comm);
 	valsread = sscanf(linebuffer,"%s",GlobalVars->peakflow_function_name);
 	if(ReadLineError(valsread,1,"peakflow function name"))	return NULL;
 	SetPeakflowOutputFunctions(GlobalVars->peakflow_function_name,&(GlobalVars->peakflow_output));
 
 	//Grab the parameters
-	ReadLineFromTextFile(globalfile,linebuffer,buff_size,string_size);
+	ReadLineFromTextFile(globalfile,linebuffer,buff_size,string_size,comm);
 	valsread = sscanf(linebuffer,"%u%n",&i,&total);
 	if(ReadLineError(valsread,1,"number of global parameters"))	return NULL;
 	GlobalVars->global_params = v_get(i);
@@ -2690,13 +2690,13 @@ UnivVars* Read_Global_Data(char globalfilename[],ErrorData** GlobalErrors,Forcin
 	GlobalVars->print_indices = (unsigned int*) realloc(GlobalVars->print_indices,GlobalVars->num_states_for_printing*sizeof(unsigned int));
 
 	//Grab the stored steps limits
-	ReadLineFromTextFile(globalfile,linebuffer,buff_size,string_size);
+	ReadLineFromTextFile(globalfile,linebuffer,buff_size,string_size,comm);
 	valsread = sscanf(linebuffer,"%u %i %u",&(GlobalVars->iter_limit),&(GlobalVars->max_transfer_steps),&(GlobalVars->discont_size));
 	if(ReadLineError(valsread,3,"steps stored, steps transfered, and discontinuity buffer size"))	return NULL;
 
 	//Grab the topology data filename
 	GlobalVars->outletlink = 0;
-	ReadLineFromTextFile(globalfile,linebuffer,buff_size,string_size);
+	ReadLineFromTextFile(globalfile,linebuffer,buff_size,string_size,comm);
 	valsread = sscanf(linebuffer,"%hu",&(GlobalVars->rvr_flag));
 	if(ReadLineError(valsread,1,"topology data flag"))	return NULL;
 	if(GlobalVars->rvr_flag == 0)
@@ -2712,12 +2712,12 @@ UnivVars* Read_Global_Data(char globalfilename[],ErrorData** GlobalErrors,Forcin
 		if(ReadLineError(valsread,2,"link id of downstream link for topology data or .dbc for topology"))	return NULL;
 		if(!CheckFilenameExtension(db_filename,".dbc"))	return NULL;
 		GlobalVars->rvr_filename = NULL;
-		db_connections[ASYNCH_DB_LOC_TOPO] = ReadDBC(db_filename,string_size);
+		db_connections[ASYNCH_DB_LOC_TOPO] = ReadDBC(db_filename,string_size,comm);
 		if(db_connections[ASYNCH_DB_LOC_TOPO] == NULL)	return NULL;
 	}
 
 	//Grab the parameter data filename
-	ReadLineFromTextFile(globalfile,linebuffer,buff_size,string_size);
+	ReadLineFromTextFile(globalfile,linebuffer,buff_size,string_size,comm);
 	valsread = sscanf(linebuffer,"%hu",&(GlobalVars->prm_flag));
 	if(ReadLineError(valsread,1,"parameter flag"))	return NULL;
 	if(GlobalVars->prm_flag == 0)
@@ -2733,13 +2733,13 @@ UnivVars* Read_Global_Data(char globalfilename[],ErrorData** GlobalErrors,Forcin
 		if(ReadLineError(valsread,1,".dbc for parameters"))	return NULL;
 		if(!CheckFilenameExtension(db_filename,".dbc"))	return NULL;
 		GlobalVars->prm_filename = NULL;
-		db_connections[ASYNCH_DB_LOC_PARAMS] = ReadDBC(db_filename,string_size);
+		db_connections[ASYNCH_DB_LOC_PARAMS] = ReadDBC(db_filename,string_size,comm);
 		if(!db_connections[ASYNCH_DB_LOC_PARAMS])	return NULL;
 	}
 
 	//Grab the initial data file
 	GlobalVars->init_filename = NULL;
-	ReadLineFromTextFile(globalfile,linebuffer,buff_size,string_size);
+	ReadLineFromTextFile(globalfile,linebuffer,buff_size,string_size,comm);
 	valsread = sscanf(linebuffer,"%hu",&(GlobalVars->init_flag));
 	if(ReadLineError(valsread,1,"initial data flag"))	return NULL;
 	if(GlobalVars->init_flag == 0 || GlobalVars->init_flag == 1 || GlobalVars->init_flag == 2)
@@ -2756,19 +2756,19 @@ UnivVars* Read_Global_Data(char globalfilename[],ErrorData** GlobalErrors,Forcin
 		valsread = sscanf(linebuffer,"%*u %s %u",db_filename,&(GlobalVars->init_timestamp));
 		if(ReadLineError(valsread,1,".dbc for parameters"))	return NULL;
 		if(!CheckFilenameExtension(db_filename,".dbc"))	return NULL;
-		db_connections[ASYNCH_DB_LOC_INIT] = ReadDBC(db_filename,string_size);
+		db_connections[ASYNCH_DB_LOC_INIT] = ReadDBC(db_filename,string_size,comm);
 		if(!db_connections[ASYNCH_DB_LOC_INIT])	return NULL;
 	}
 
 	//Grab number of forcings
 	unsigned int got_forcings;
-	ReadLineFromTextFile(globalfile,linebuffer,buff_size,string_size);
+	ReadLineFromTextFile(globalfile,linebuffer,buff_size,string_size,comm);
 	valsread = sscanf(linebuffer,"%u",&got_forcings);
 	if(ReadLineError(valsread,1,"rainfall flag"))	return NULL;
 	if(got_forcings < GlobalVars->num_forcings && my_rank == 0)
 	{
 		printf("[%i]: Error: Got %u forcings in the .gbl file. Expected %u for model %u.\n",my_rank,got_forcings,GlobalVars->num_forcings,GlobalVars->type);
-		MPI_Abort(MPI_COMM_WORLD,1);
+		MPI_Abort(comm,1);
 	}
 	if(got_forcings > GlobalVars->num_forcings && my_rank == 0)
 	{
@@ -2781,7 +2781,7 @@ UnivVars* Read_Global_Data(char globalfilename[],ErrorData** GlobalErrors,Forcin
 	GlobalVars->hydro_table = GlobalVars->peak_table = NULL;
 	for(i=0;i<GlobalVars->num_forcings;i++)
 	{
-		ReadLineFromTextFile(globalfile,linebuffer,buff_size,string_size);
+		ReadLineFromTextFile(globalfile,linebuffer,buff_size,string_size,comm);
 		valsread = sscanf(linebuffer,"%hi",&(forcings[i]->flag));
 		if(ReadLineError(valsread,1,"forcings flag"))	return NULL;
 
@@ -2795,13 +2795,13 @@ UnivVars* Read_Global_Data(char globalfilename[],ErrorData** GlobalErrors,Forcin
 
 			if(forcings[i]->flag == 2 || forcings[i]->flag == 6)
 			{
-				ReadLineFromTextFile(globalfile,linebuffer,buff_size,string_size);
+				ReadLineFromTextFile(globalfile,linebuffer,buff_size,string_size,comm);
 				valsread = sscanf(linebuffer,"%u %lf %u %u",&(forcings[i]->increment),&(forcings[i]->file_time),&(forcings[i]->first_file),&(forcings[i]->last_file));
 				if(ReadLineError(valsread,4,"time increment, file time, first file, and last file"))	return NULL;
 			}
 			else if(forcings[i]->flag == 8)
 			{
-				ReadLineFromTextFile(globalfile,linebuffer,buff_size,string_size);
+				ReadLineFromTextFile(globalfile,linebuffer,buff_size,string_size,comm);
 				valsread = sscanf(linebuffer,"%u %u %u",&(forcings[i]->increment),&(forcings[i]->first_file),&(forcings[i]->last_file));
 				if(ReadLineError(valsread,3,"time increment, first file, and last file"))	return NULL;
 			}
@@ -2811,9 +2811,9 @@ UnivVars* Read_Global_Data(char globalfilename[],ErrorData** GlobalErrors,Forcin
 			valsread = sscanf(linebuffer,"%*i %s",db_filename);
 			if(ReadLineError(valsread,1,".dbc for forcing"))	return NULL;
 			if(!CheckFilenameExtension(db_filename,".dbc"))	return NULL;
-			db_connections[ASYNCH_DB_LOC_FORCING_START+i] = ReadDBC(db_filename,string_size);
+			db_connections[ASYNCH_DB_LOC_FORCING_START+i] = ReadDBC(db_filename,string_size,comm);
 
-			ReadLineFromTextFile(globalfile,linebuffer,buff_size,string_size);
+			ReadLineFromTextFile(globalfile,linebuffer,buff_size,string_size,comm);
 			valsread = sscanf(linebuffer,"%u %lf %u %u",&(forcings[i]->increment),&(forcings[i]->file_time),&(forcings[i]->first_file),&(forcings[i]->last_file));
 			if(ReadLineError(valsread,4,"time increment, file time, first file, and last file"))	return NULL;
 			forcings[i]->raindb_start_time = forcings[i]->first_file;
@@ -2823,9 +2823,9 @@ UnivVars* Read_Global_Data(char globalfilename[],ErrorData** GlobalErrors,Forcin
 			valsread = sscanf(linebuffer,"%*i %s",db_filename);
 			if(ReadLineError(valsread,1,".dbc for forcing"))	return NULL;
 			if(!CheckFilenameExtension(db_filename,".dbc"))	return NULL;
-			db_connections[ASYNCH_DB_LOC_FORCING_START+i] = ReadDBC(db_filename,string_size);
+			db_connections[ASYNCH_DB_LOC_FORCING_START+i] = ReadDBC(db_filename,string_size,comm);
 
-			ReadLineFromTextFile(globalfile,linebuffer,buff_size,string_size);
+			ReadLineFromTextFile(globalfile,linebuffer,buff_size,string_size,comm);
 			valsread = sscanf(linebuffer,"%u %u %u",&(forcings[i]->increment),&(forcings[i]->first_file),&(forcings[i]->last_file));
 			if(ReadLineError(valsread,3,"time increment, file time, first file, and last file"))	return NULL;
 			forcings[i]->raindb_start_time = forcings[i]->first_file;
@@ -2841,7 +2841,7 @@ UnivVars* Read_Global_Data(char globalfilename[],ErrorData** GlobalErrors,Forcin
 			if(ReadLineError(valsread,1,"recurring rainfall filename"))	return NULL;
 			if(!CheckFilenameExtension(forcings[i]->filename,".mon"))	return NULL;
 
-			ReadLineFromTextFile(globalfile,linebuffer,buff_size,string_size);
+			ReadLineFromTextFile(globalfile,linebuffer,buff_size,string_size,comm);
 			valsread = sscanf(linebuffer,"%u %u",&(forcings[i]->first_file),&(forcings[i]->last_file));
 			if(ReadLineError(valsread,2,"first time, and last time"))	return NULL;
 			forcings[i]->raindb_start_time = forcings[i]->first_file;
@@ -2858,7 +2858,7 @@ UnivVars* Read_Global_Data(char globalfilename[],ErrorData** GlobalErrors,Forcin
 	}
 
 	//Grab the .dam filename
-	ReadLineFromTextFile(globalfile,linebuffer,buff_size,string_size);
+	ReadLineFromTextFile(globalfile,linebuffer,buff_size,string_size,comm);
 	valsread = sscanf(linebuffer,"%hu",&(GlobalVars->dam_flag));
 	if(ReadLineError(valsread,1,"dam flag"))	return NULL;
 
@@ -2873,14 +2873,14 @@ UnivVars* Read_Global_Data(char globalfilename[],ErrorData** GlobalErrors,Forcin
 		if(GlobalVars->dam_flag == 3)
 		{
 			if(!CheckFilenameExtension(GlobalVars->dam_filename,".dbc"))	return NULL;
-			db_connections[ASYNCH_DB_LOC_QVS] = ReadDBC(GlobalVars->dam_filename,string_size);
+			db_connections[ASYNCH_DB_LOC_QVS] = ReadDBC(GlobalVars->dam_filename,string_size,comm);
 		}
 	}
 	else
 		GlobalVars->dam_filename = NULL;
 
 	//Get the link ids where reservoirs exist
-	ReadLineFromTextFile(globalfile,linebuffer,buff_size,string_size);
+	ReadLineFromTextFile(globalfile,linebuffer,buff_size,string_size,comm);
 	valsread = sscanf(linebuffer,"%hu",&(GlobalVars->res_flag));
 	if(ReadLineError(valsread,1,"res flag"))	return NULL;
 
@@ -2899,7 +2899,7 @@ UnivVars* Read_Global_Data(char globalfilename[],ErrorData** GlobalErrors,Forcin
 			valsread = sscanf(linebuffer,"%*u %s %hi",GlobalVars->rsv_filename,&(GlobalVars->res_forcing_idx));
 			if(ReadLineError(valsread,2,".dbc for reservoirs"))	return NULL;
 			if(!CheckFilenameExtension(GlobalVars->rsv_filename,".dbc"))	return NULL;
-			db_connections[ASYNCH_DB_LOC_RSV] = ReadDBC(GlobalVars->rsv_filename,string_size);
+			db_connections[ASYNCH_DB_LOC_RSV] = ReadDBC(GlobalVars->rsv_filename,string_size,comm);
 		}
 
 		if(GlobalVars->res_forcing_idx >= GlobalVars->num_forcings)
@@ -2915,7 +2915,7 @@ UnivVars* Read_Global_Data(char globalfilename[],ErrorData** GlobalErrors,Forcin
 	}
 
 	//Grab where to write the hydrographs
-	ReadLineFromTextFile(globalfile,linebuffer,buff_size,string_size);
+	ReadLineFromTextFile(globalfile,linebuffer,buff_size,string_size,comm);
 	valsread = sscanf(linebuffer,"%hu",&(GlobalVars->hydros_loc_flag));
 	if(ReadLineError(valsread,1,"hydrographs location"))	return NULL;
 
@@ -2943,11 +2943,11 @@ UnivVars* Read_Global_Data(char globalfilename[],ErrorData** GlobalErrors,Forcin
 		valsread = sscanf(linebuffer,"%*u %lf %s %s",&(GlobalVars->print_time),GlobalVars->hydros_loc_filename,GlobalVars->hydro_table);
 		if(ReadLineError(valsread,3,"hydrographs location"))	return NULL;
 		if(!CheckFilenameExtension(GlobalVars->hydros_loc_filename,".dbc"))	return NULL;
-		db_connections[ASYNCH_DB_LOC_HYDRO_OUTPUT] = ReadDBC(GlobalVars->hydros_loc_filename,string_size);
+		db_connections[ASYNCH_DB_LOC_HYDRO_OUTPUT] = ReadDBC(GlobalVars->hydros_loc_filename,string_size,comm);
 	}
 
 	//Grab where to write the peakflow data
-	ReadLineFromTextFile(globalfile,linebuffer,buff_size,string_size);
+	ReadLineFromTextFile(globalfile,linebuffer,buff_size,string_size,comm);
 	valsread = sscanf(linebuffer,"%hu",&(GlobalVars->peaks_loc_flag));
 	if(ReadLineError(valsread,1,"peakflow location"))	return NULL;
 
@@ -2971,11 +2971,11 @@ UnivVars* Read_Global_Data(char globalfilename[],ErrorData** GlobalErrors,Forcin
 		valsread = sscanf(linebuffer,"%*u %s %s",GlobalVars->peaks_loc_filename,GlobalVars->peak_table);
 		if(ReadLineError(valsread,2,"peakflow location"))	return NULL;
 		if(!CheckFilenameExtension(GlobalVars->peaks_loc_filename,".dbc"))	return NULL;
-		db_connections[ASYNCH_DB_LOC_PEAK_OUTPUT] = ReadDBC(GlobalVars->peaks_loc_filename,string_size);
+		db_connections[ASYNCH_DB_LOC_PEAK_OUTPUT] = ReadDBC(GlobalVars->peaks_loc_filename,string_size,comm);
 	}
 
 	//Grab the .sav files
-	ReadLineFromTextFile(globalfile,linebuffer,buff_size,string_size);
+	ReadLineFromTextFile(globalfile,linebuffer,buff_size,string_size,comm);
 	valsread = sscanf(linebuffer,"%hu",&(GlobalVars->hydrosave_flag));
 	if(ReadLineError(valsread,1,"hydrographs save flag"))	return NULL;
 
@@ -2992,12 +2992,12 @@ UnivVars* Read_Global_Data(char globalfilename[],ErrorData** GlobalErrors,Forcin
 		if(ReadLineError(valsread,1,".dbc for hydrograph save ids"))	return NULL;
 		if(!CheckFilenameExtension(db_filename,".dbc"))	return NULL;
 		GlobalVars->hydrosave_filename = NULL;
-		db_connections[ASYNCH_DB_LOC_HYDROSAVE] = ReadDBC(db_filename,string_size);
+		db_connections[ASYNCH_DB_LOC_HYDROSAVE] = ReadDBC(db_filename,string_size,comm);
 	}
 	else
 		GlobalVars->hydrosave_filename = NULL;
 
-	ReadLineFromTextFile(globalfile,linebuffer,buff_size,string_size);
+	ReadLineFromTextFile(globalfile,linebuffer,buff_size,string_size,comm);
 	valsread = sscanf(linebuffer,"%hu",&(GlobalVars->peaksave_flag));
 	if(ReadLineError(valsread,1,"peakflows save flag"))	return NULL;
 
@@ -3014,14 +3014,14 @@ UnivVars* Read_Global_Data(char globalfilename[],ErrorData** GlobalErrors,Forcin
 		if(ReadLineError(valsread,1,".dbc for peakflow save ids"))	return NULL;
 		if(!CheckFilenameExtension(db_filename,".dbc"))	return NULL;
 		GlobalVars->peaksave_filename = NULL;
-		db_connections[ASYNCH_DB_LOC_PEAKSAVE] = ReadDBC(db_filename,string_size);
+		db_connections[ASYNCH_DB_LOC_PEAKSAVE] = ReadDBC(db_filename,string_size,comm);
 	}
 	else
 		GlobalVars->peaksave_filename = NULL;
 	GlobalVars->peakfilename = NULL;
 
 	//Grab data dump info
-	ReadLineFromTextFile(globalfile,linebuffer,buff_size,string_size);
+	ReadLineFromTextFile(globalfile,linebuffer,buff_size,string_size,comm);
 	valsread = sscanf(linebuffer,"%hu",&(GlobalVars->dump_loc_flag));
 	if(ReadLineError(valsread,1,"snapshot save flag"))	return NULL;
 
@@ -3042,16 +3042,16 @@ UnivVars* Read_Global_Data(char globalfilename[],ErrorData** GlobalErrors,Forcin
 		if(ReadLineError(valsread,2,".dbc for snapshots"))	return NULL;
 		if(!CheckFilenameExtension(db_filename,".dbc"))	return NULL;
 		//GlobalVars->dump_loc_filename = NULL;
-		db_connections[ASYNCH_DB_LOC_SNAPSHOT_OUTPUT] = ReadDBC(db_filename,string_size);
+		db_connections[ASYNCH_DB_LOC_SNAPSHOT_OUTPUT] = ReadDBC(db_filename,string_size,comm);
 	}
 
 	//Grab folder locations
 	//GlobalVars->results_folder = (char*) malloc(string_size*sizeof(char));
 	GlobalVars->temp_filename = (char*) malloc(string_size*sizeof(char));
-	//ReadLineFromTextFile(globalfile,linebuffer,buff_size,string_size);
+	//ReadLineFromTextFile(globalfile,linebuffer,buff_size,string_size,comm);
 	//valsread = sscanf(linebuffer,"%s",GlobalVars->results_folder);
 	//if(ReadLineError(valsread,1,"results folder"))	return NULL;
-	ReadLineFromTextFile(globalfile,linebuffer,buff_size,string_size);
+	ReadLineFromTextFile(globalfile,linebuffer,buff_size,string_size,comm);
 	valsread = sscanf(linebuffer,"%s",GlobalVars->temp_filename);
 	if(ReadLineError(valsread,1,"scratch work folder"))	return NULL;
 
@@ -3068,12 +3068,12 @@ UnivVars* Read_Global_Data(char globalfilename[],ErrorData** GlobalErrors,Forcin
 	strcat(GlobalVars->temp_filename,db_filename);
 
 	//Grab adapative data
-	ReadLineFromTextFile(globalfile,linebuffer,buff_size,string_size);
+	ReadLineFromTextFile(globalfile,linebuffer,buff_size,string_size,comm);
 	valsread = sscanf(linebuffer,"%lf %lf %lf",&((*GlobalErrors)->facmin),&((*GlobalErrors)->facmax),&((*GlobalErrors)->fac));
 	if(ReadLineError(valsread,3,"facmin, facmax, fac"))	return NULL;
 
 	//Read in the flag for the error tolerances
-	ReadLineFromTextFile(globalfile,linebuffer,buff_size,string_size);
+	ReadLineFromTextFile(globalfile,linebuffer,buff_size,string_size,comm);
 	valsread = sscanf(linebuffer,"%i",&(GlobalVars->rkd_flag));
 	if(ReadLineError(valsread,1,"error tolerance flag"))	return NULL;
 
@@ -3084,13 +3084,13 @@ UnivVars* Read_Global_Data(char globalfilename[],ErrorData** GlobalErrors,Forcin
 	if(GlobalVars->rkd_flag == 0)	//Error data is found in the universal file
 	{
 		rkdfilename[0] = '\0';
-		ReadLineFromTextFile(globalfile,linebuffer,buff_size,string_size);
+		ReadLineFromTextFile(globalfile,linebuffer,buff_size,string_size,comm);
 		valsread = sscanf(linebuffer,"%u",&flag);
 		if(ReadLineError(valsread,1,"RK method index"))	return NULL;
 		GlobalVars->method = flag;
 
 		//Count the number of states given
-		ReadLineFromTextFile(globalfile,linebuffer,buff_size,string_size);
+		ReadLineFromTextFile(globalfile,linebuffer,buff_size,string_size,comm);
 		total = 0;
 		int error_dim = -1;
 		double tempy;
@@ -3107,7 +3107,7 @@ UnivVars* Read_Global_Data(char globalfilename[],ErrorData** GlobalErrors,Forcin
 		(*GlobalErrors)->abstol_dense = v_get(error_dim);
 		(*GlobalErrors)->reltol_dense = v_get(error_dim);
 
-		//ReadLineFromTextFile(globalfile,linebuffer,buff_size,string_size);
+		//ReadLineFromTextFile(globalfile,linebuffer,buff_size,string_size,comm);
 		total = 0;
 		for(i=0;i<error_dim;i++)	//Note: Don't read the line from disk again
 		{
@@ -3116,7 +3116,7 @@ UnivVars* Read_Global_Data(char globalfilename[],ErrorData** GlobalErrors,Forcin
 			total += written;
 		}
 
-		ReadLineFromTextFile(globalfile,linebuffer,buff_size,string_size);
+		ReadLineFromTextFile(globalfile,linebuffer,buff_size,string_size,comm);
 		total = 0;
 		for(i=0;i<error_dim;i++)
 		{
@@ -3125,7 +3125,7 @@ UnivVars* Read_Global_Data(char globalfilename[],ErrorData** GlobalErrors,Forcin
 			total += written;
 		}
 
-		ReadLineFromTextFile(globalfile,linebuffer,buff_size,string_size);
+		ReadLineFromTextFile(globalfile,linebuffer,buff_size,string_size,comm);
 		total = 0;
 		for(i=0;i<error_dim;i++)
 		{
@@ -3134,7 +3134,7 @@ UnivVars* Read_Global_Data(char globalfilename[],ErrorData** GlobalErrors,Forcin
 			total += written;
 		}
 
-		ReadLineFromTextFile(globalfile,linebuffer,buff_size,string_size);
+		ReadLineFromTextFile(globalfile,linebuffer,buff_size,string_size,comm);
 		total = 0;
 		for(i=0;i<error_dim;i++)
 		{
@@ -3151,7 +3151,7 @@ UnivVars* Read_Global_Data(char globalfilename[],ErrorData** GlobalErrors,Forcin
 		(*GlobalErrors)->abstol_dense = NULL;
 		(*GlobalErrors)->reltol_dense = NULL;
 
-		//ReadLineFromTextFile(globalfile,linebuffer,buff_size,string_size);
+		//ReadLineFromTextFile(globalfile,linebuffer,buff_size,string_size,comm);
 		valsread = sscanf(linebuffer,"%*i %s",rkdfilename);
 		if(ReadLineError(valsread,1,".rkd filename"))	return NULL;
 		if(!CheckFilenameExtension(rkdfilename,".rkd"))	return NULL;
@@ -3163,7 +3163,7 @@ UnivVars* Read_Global_Data(char globalfilename[],ErrorData** GlobalErrors,Forcin
 	}
 
 	//Check for end mark
-	ReadLineFromTextFile(globalfile,linebuffer,buff_size,string_size);
+	ReadLineFromTextFile(globalfile,linebuffer,buff_size,string_size,comm);
 	sscanf(linebuffer,"%c",&endmark);
 	if(endmark != '#')
 	{
@@ -3187,7 +3187,7 @@ UnivVars* Read_Global_Data(char globalfilename[],ErrorData** GlobalErrors,Forcin
 //int** save_list (set by this method): Array of link ids where data will be written.
 //int* size (set by this method): Will be the number of links for which data must be written to disk (number of links in the .sav file).
 //Returns 1 if an error occured. 0 otherwise.
-int Create_SAV_Data(char filename[],Link** sys,unsigned int N,unsigned int** save_list,unsigned int* size,ConnData *conninfo,unsigned short int flag)
+int Create_SAV_Data(char filename[],Link** sys,unsigned int N,unsigned int** save_list,unsigned int* size,ConnData *conninfo,unsigned short int flag, MPI_Comm comm)
 {
 	unsigned int i,id,error = 0,list_size = N;
 	FILE* save_file = NULL;
@@ -3235,11 +3235,11 @@ int Create_SAV_Data(char filename[],Link** sys,unsigned int N,unsigned int** sav
 		}
 
 		//Send data
-		MPI_Bcast(&error,1,MPI_UNSIGNED,0,MPI_COMM_WORLD);
+		MPI_Bcast(&error,1,MPI_UNSIGNED,0,comm);
 		if(error)	return 1;
-		MPI_Bcast(size,1,MPI_UNSIGNED,0,MPI_COMM_WORLD);
+		MPI_Bcast(size,1,MPI_UNSIGNED,0,comm);
 		*save_list = realloc(*save_list,*size * sizeof(unsigned int));
-		MPI_Bcast(*save_list,*size,MPI_UNSIGNED,0,MPI_COMM_WORLD);
+		MPI_Bcast(*save_list,*size,MPI_UNSIGNED,0,comm);
 	}
 	else if(flag == 2)	//Grab from database
 	{
@@ -3264,11 +3264,11 @@ int Create_SAV_Data(char filename[],Link** sys,unsigned int N,unsigned int** sav
 			DisconnectPGDB(conninfo);
 		}
 
-		MPI_Bcast(&error,1,MPI_UNSIGNED,0,MPI_COMM_WORLD);
+		MPI_Bcast(&error,1,MPI_UNSIGNED,0,comm);
 		if(error)	return 1;
-		MPI_Bcast(size,1,MPI_INT,0,MPI_COMM_WORLD);
+		MPI_Bcast(size,1,MPI_INT,0,comm);
 		if(my_rank != 0)	*save_list = malloc(*size * sizeof(unsigned int));
-		MPI_Bcast(*save_list,*size,MPI_INT,0,MPI_COMM_WORLD);
+		MPI_Bcast(*save_list,*size,MPI_INT,0,comm);
 	}
 	else if(flag == 3)	//All links
 	{
@@ -3281,7 +3281,7 @@ int Create_SAV_Data(char filename[],Link** sys,unsigned int N,unsigned int** sav
 }
 
 
-void ReadLineFromTextFile(FILE* globalfile,char* linebuffer,unsigned int size,unsigned int string_size)
+void ReadLineFromTextFile(FILE* globalfile,char* linebuffer,unsigned int size,unsigned int string_size, MPI_Comm comm)
 {
 	unsigned int linebuffer_length;
 	if(my_rank == 0)
@@ -3292,8 +3292,8 @@ void ReadLineFromTextFile(FILE* globalfile,char* linebuffer,unsigned int size,un
 		if(linebuffer_length > string_size + 10)	printf("Warning: %zu %u Line in .gbl file may be too long. Read in the long line:\n\"%s\"\n",strlen(linebuffer),string_size,linebuffer);
 	}
 
-	MPI_Bcast(&linebuffer_length,1,MPI_UNSIGNED,0,MPI_COMM_WORLD);
-	MPI_Bcast(linebuffer,linebuffer_length+1,MPI_CHAR,0,MPI_COMM_WORLD);
+	MPI_Bcast(&linebuffer_length,1,MPI_UNSIGNED,0,comm);
+	MPI_Bcast(linebuffer,linebuffer_length+1,MPI_CHAR,0,comm);
 }
 
 int ReadLineError(int valsread,int valswant,char message[])

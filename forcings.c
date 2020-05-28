@@ -67,7 +67,7 @@ unsigned int PassesDatabase(Forcing* forcing,double maxtime,ConnData* conninfo)
 
 
 //For flag = 9
-unsigned int PassesDatabase_Irregular(Forcing* forcing,double maxtime,ConnData* conninfo)
+unsigned int PassesDatabase_Irregular(Forcing* forcing,double maxtime,ConnData* conninfo, MPI_Comm comm)
 {
 	if(forcing->lastused_first_file != forcing->first_file || forcing->lastused_last_file != forcing->last_file)
 	{
@@ -91,9 +91,9 @@ unsigned int PassesDatabase_Irregular(Forcing* forcing,double maxtime,ConnData* 
 			DisconnectPGDB(conninfo);
 		}
 
-		MPI_Bcast(&error,1,MPI_INT,0,MPI_COMM_WORLD);
+		MPI_Bcast(&error,1,MPI_INT,0,comm);
 		if(error)	return 0;
-		MPI_Bcast(&(forcing->number_timesteps),1,MPI_UNSIGNED,0,MPI_COMM_WORLD);
+		MPI_Bcast(&(forcing->number_timesteps),1,MPI_UNSIGNED,0,comm);
 
 		forcing->lastused_first_file = forcing->first_file;
 		forcing->lastused_last_file = forcing->last_file;
@@ -120,7 +120,7 @@ double NextForcingOther(Link** sys,unsigned int N,unsigned int* my_sys,unsigned 
 }
 
 //For flag = 2
-double NextForcingBinaryFiles(Link** sys,unsigned int N,unsigned int* my_sys,unsigned int my_N,int* assignments,UnivVars* GlobalVars,Forcing* forcing,ConnData** db_connections,unsigned int** id_to_loc,unsigned int forcing_idx)
+double NextForcingBinaryFiles(Link** sys,unsigned int N,unsigned int* my_sys,unsigned int my_N,int* assignments,UnivVars* GlobalVars,Forcing* forcing,ConnData** db_connections,unsigned int** id_to_loc,unsigned int forcing_idx,MPI_Comm comm)
 {
 	unsigned int passes = forcing->passes, iteration = forcing->iteration;
 	double maxtime;
@@ -128,14 +128,14 @@ double NextForcingBinaryFiles(Link** sys,unsigned int N,unsigned int* my_sys,uns
 	else				maxtime = min(GlobalVars->maxtime,(iteration+1)*forcing->file_time*forcing->increment);
 	int maxfileindex = (int) min((double) forcing->first_file+(iteration+1)*forcing->increment,(double) (forcing->last_file + 1));
 
-	Create_Rain_Data_Par(sys,N,my_N,GlobalVars,my_sys,assignments,forcing->filename,forcing->first_file+iteration*forcing->increment,maxfileindex,iteration*forcing->file_time*forcing->increment,forcing->file_time,forcing,id_to_loc,forcing->increment+1,forcing_idx);
+	Create_Rain_Data_Par(sys,N,my_N,GlobalVars,my_sys,assignments,forcing->filename,forcing->first_file+iteration*forcing->increment,maxfileindex,iteration*forcing->file_time*forcing->increment,forcing->file_time,forcing,id_to_loc,forcing->increment+1,forcing_idx,comm);
 
 	(forcing->iteration)++;
 	return maxtime;
 }
 
 //For flag = 6
-double NextForcingGZBinaryFiles(Link** sys,unsigned int N,unsigned int* my_sys,unsigned int my_N,int* assignments,UnivVars* GlobalVars,Forcing* forcing,ConnData** db_connections,unsigned int** id_to_loc,unsigned int forcing_idx)
+double NextForcingGZBinaryFiles(Link** sys,unsigned int N,unsigned int* my_sys,unsigned int my_N,int* assignments,UnivVars* GlobalVars,Forcing* forcing,ConnData** db_connections,unsigned int** id_to_loc,unsigned int forcing_idx, MPI_Comm comm)
 {
 	unsigned int passes = forcing->passes, iteration = forcing->iteration;
 	double maxtime;
@@ -143,14 +143,14 @@ double NextForcingGZBinaryFiles(Link** sys,unsigned int N,unsigned int* my_sys,u
 	else				maxtime = min(GlobalVars->maxtime,(iteration+1)*forcing->file_time*forcing->increment);
 	int maxfileindex = (int) min((double) forcing->first_file+(iteration+1)*forcing->increment,(double) (forcing->last_file + 1));
 
-	Create_Rain_Data_GZ(sys,N,my_N,GlobalVars,my_sys,assignments,forcing->filename,forcing->first_file+iteration*forcing->increment,maxfileindex,iteration*forcing->file_time*forcing->increment,forcing->file_time,forcing,id_to_loc,forcing->increment+1,forcing_idx);
+	Create_Rain_Data_GZ(sys,N,my_N,GlobalVars,my_sys,assignments,forcing->filename,forcing->first_file+iteration*forcing->increment,maxfileindex,iteration*forcing->file_time*forcing->increment,forcing->file_time,forcing,id_to_loc,forcing->increment+1,forcing_idx, comm);
 
 	(forcing->iteration)++;
 	return maxtime;
 }
 
 //For flag = 8
-double NextForcingGridCell(Link** sys,unsigned int N,unsigned int* my_sys,unsigned int my_N,int* assignments,UnivVars* GlobalVars,Forcing* forcing,ConnData** db_connections,unsigned int** id_to_loc,unsigned int forcing_idx)
+double NextForcingGridCell(Link** sys,unsigned int N,unsigned int* my_sys,unsigned int my_N,int* assignments,UnivVars* GlobalVars,Forcing* forcing,ConnData** db_connections,unsigned int** id_to_loc,unsigned int forcing_idx, MPI_Comm comm)
 {
 	unsigned int passes = forcing->passes, iteration = forcing->iteration;
 	double maxtime;
@@ -158,14 +158,14 @@ double NextForcingGridCell(Link** sys,unsigned int N,unsigned int* my_sys,unsign
 	else				maxtime = min(GlobalVars->maxtime,(iteration+1)*forcing->file_time*forcing->increment);
 	int maxfileindex = (int) min((double) forcing->first_file+(iteration+1)*forcing->increment,(double) (forcing->last_file + 1));
 
-	Create_Rain_Data_Grid(sys,N,my_N,GlobalVars,my_sys,assignments,forcing->fileident,forcing->first_file+iteration*forcing->increment,maxfileindex,iteration*forcing->file_time*forcing->increment,forcing->file_time,forcing,id_to_loc,forcing->increment+1,forcing_idx);
+	Create_Rain_Data_Grid(sys,N,my_N,GlobalVars,my_sys,assignments,forcing->fileident,forcing->first_file+iteration*forcing->increment,maxfileindex,iteration*forcing->file_time*forcing->increment,forcing->file_time,forcing,id_to_loc,forcing->increment+1,forcing_idx,comm);
 
 	(forcing->iteration)++;
 	return maxtime;
 }
 
 //For flag = 3
-double NextForcingDatabase(Link** sys,unsigned int N,unsigned int* my_sys,unsigned int my_N,int* assignments,UnivVars* GlobalVars,Forcing* forcing,ConnData** db_connections,unsigned int** id_to_loc,unsigned int forcing_idx)
+double NextForcingDatabase(Link** sys,unsigned int N,unsigned int* my_sys,unsigned int my_N,int* assignments,UnivVars* GlobalVars,Forcing* forcing,ConnData** db_connections,unsigned int** id_to_loc,unsigned int forcing_idx,MPI_Comm comm)
 {
 	unsigned int passes = forcing->passes, iteration = forcing->iteration,first_timestamp = 0;
 	double maxtime;
@@ -185,7 +185,7 @@ double NextForcingDatabase(Link** sys,unsigned int N,unsigned int* my_sys,unsign
 		if( (int)(first_timestamp - forcing->good_timestamp) % (int)(forcing->file_time*60+0.01) )
 			first_timestamp -= (unsigned int)(forcing->file_time*60.0 + 0.01);
 
-		Create_Rain_Database(sys,N,my_N,GlobalVars,my_sys,assignments,db_connections[ASYNCH_DB_LOC_FORCING_START + forcing_idx],first_timestamp,maxfileindex,forcing,id_to_loc,GlobalVars->maxtime,forcing_idx);
+		Create_Rain_Database(sys,N,my_N,GlobalVars,my_sys,assignments,db_connections[ASYNCH_DB_LOC_FORCING_START + forcing_idx],first_timestamp,maxfileindex,forcing,id_to_loc,GlobalVars->maxtime,forcing_idx,comm);
 		(forcing->iteration)++;
 	}
 	else
@@ -196,7 +196,7 @@ double NextForcingDatabase(Link** sys,unsigned int N,unsigned int* my_sys,unsign
 
 
 //For flag = 9
-double NextForcingDatabase_Irregular(Link** sys,unsigned int N,unsigned int* my_sys,unsigned int my_N,int* assignments,UnivVars* GlobalVars,Forcing* forcing,ConnData** db_connections,unsigned int** id_to_loc,unsigned int forcing_idx)
+double NextForcingDatabase_Irregular(Link** sys,unsigned int N,unsigned int* my_sys,unsigned int my_N,int* assignments,UnivVars* GlobalVars,Forcing* forcing,ConnData** db_connections,unsigned int** id_to_loc,unsigned int forcing_idx,MPI_Comm comm)
 {
 	unsigned int passes = forcing->passes, iteration = forcing->iteration,first_timestamp = 0;
 	double maxtime;
@@ -211,7 +211,7 @@ printf("**************\n");
 	//if( (int)(sys[my_sys[0]]->last_t*60 + .001) + forcing->raindb_start_time == (int)(forcing->first_file+iteration*forcing->file_time*60.0*forcing->increment+0.01) )
 	if( (int)(sys[my_sys[0]]->last_t*60 + .001) + forcing->raindb_start_time == (int)(forcing->next_timestamp) || forcing->iteration == 0)
 	{
-		forcing->next_timestamp = Create_Rain_Database_Irregular(sys,N,my_N,GlobalVars,my_sys,assignments,db_connections[ASYNCH_DB_LOC_FORCING_START + forcing_idx],forcing->next_timestamp,0,forcing,id_to_loc,GlobalVars->maxtime,forcing_idx);
+		forcing->next_timestamp = Create_Rain_Database_Irregular(sys,N,my_N,GlobalVars,my_sys,assignments,db_connections[ASYNCH_DB_LOC_FORCING_START + forcing_idx],forcing->next_timestamp,0,forcing,id_to_loc,GlobalVars->maxtime,forcing_idx,comm);
 		(forcing->iteration)++;
 
 /*
@@ -257,7 +257,7 @@ printf("******************\n");
 
 
 //For flag = 7
-double NextForcingRecurring(Link** sys,unsigned int N,unsigned int* my_sys,unsigned int my_N,int* assignments,UnivVars* GlobalVars,Forcing* forcing,ConnData** db_connections,unsigned int** id_to_loc,unsigned int forcing_idx)
+double NextForcingRecurring(Link** sys,unsigned int N,unsigned int* my_sys,unsigned int my_N,int* assignments,UnivVars* GlobalVars,Forcing* forcing,ConnData** db_connections,unsigned int** id_to_loc,unsigned int forcing_idx,MPI_Comm comm)
 {
 	double maxtime;
 	struct tm next_time,*first_time;
@@ -282,7 +282,7 @@ double NextForcingRecurring(Link** sys,unsigned int N,unsigned int* my_sys,unsig
 		copy_tm(first_time,&next_time);	//Yeah, this is lazy. But it's only done once...
 	}
 
-	maxtime = CreateForcing_Monthly(sys,my_N,my_sys,GlobalVars,forcing->GlobalForcing,forcing_idx,&next_time,forcing->first_file,forcing->last_file,sys[my_sys[0]]->last_t);
+	maxtime = CreateForcing_Monthly(sys,my_N,my_sys,GlobalVars,forcing->GlobalForcing,forcing_idx,&next_time,forcing->first_file,forcing->last_file,sys[my_sys[0]]->last_t, comm);
 	(forcing->iteration)++;
 	return maxtime;
 }

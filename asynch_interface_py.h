@@ -15,7 +15,7 @@ void C_inc_ref(PyObject* obj);
 unsigned int* Allocate_CUINT_Array(unsigned int n);
 void Free_PythonInterface(asynchsolver* asynch);
 
-asynchsolver* Asynch_Init_py(int numprocs,int* ranks);
+asynchsolver* Asynch_Init_py(void *ptr);
 void Asynch_Set_System_State_py(asynchsolver* asynch,double t_0,double* values);
 
 int Asynch_Custom_Model_py(asynchsolver* asynch,void (*SetParamSizes)(UnivVars*,PyObject*),void (*Convert)(VEC*,unsigned int,void*),void (*Routines)(Link*,unsigned int,unsigned int,unsigned short int,void*),

@@ -126,8 +126,10 @@ class asynchsolver:
 		self.comm = comm
 		self.np = self.comm.Get_size()
 		self.my_rank = my_rank
-		ranks = [self.my_rank]
-		self.asynch_obj = self.lib.Asynch_Init_py(self.np,(c_int * self.np)(*ranks))
+                address = MPI._addressof(comm)
+                comm_ptr = c_void_p(address)
+                ranks = [self.my_rank]
+		self.asynch_obj = self.lib.Asynch_Init_py(comm_ptr)
 		self.tempfiles_exist = False
 		#ranks = numpy.zeros((self.np,1),numpy.dtype('i4'))
 		#for i in range(self.np):	ranks[i] = i

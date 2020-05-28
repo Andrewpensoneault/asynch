@@ -1,15 +1,23 @@
-from asynch_py.asynch_interface_parallel import asynchsolver
 import sys
 from mpi4py import MPI
 import numpy as np
-from asynch_py.io import get_asynch_params, get_forcings, create_output_folders, write_sav, read_ini, create_ini, make_forcing_files, create_gbl, remove_files, write_results, get_ids 
+from asynch_py.io import get_asynch_params, get_forcings, create_output_folders, write_sav, read_ini, create_ini, make_forcing_files, create_gbl, remove_files, write_results, get_ids, create_tmp_folder 
 import datetime
 import time as ttt
 
-comm = MPI.COMM_WORLD
-nproc = comm.Get_size()
-my_rank = comm.Get_rank()
-import pdb; pdb.set_trace()
+cfull = MPI.COMM_WORLD
+nproc = cfull.Get_size()
+my_rank = cfull.Get_rank()
+
+color = my_rank
+key = 0
+
+csmall = cfull.Split(color,key)
+small_rank = csmall.Get_rank()
+
+
+
+from asynch_py.asynch_interface_parallel import asynchsolver
 buffer_size = 100 #size of one sprintf entry for output
 ## Parse command line arguments
 numargs = len(sys.argv)
@@ -37,8 +45,8 @@ ens_list = np.array([i for i in range(my_rank*my_ens_num,(my_rank+1)*my_ens_num)
 large_string_len = buffer_size*num_steps*link_num*link_var_num
 
 if my_rank == 0:
-    write_sav(asynch_data)
     create_output_folders(asynch_data)
+    write_sav(asynch_data)
     forcing_data = get_forcings(asynch_data)
     for dsource in asynch_data['measure']:
         dsource.get_meas(asynch_data['time_window'])
@@ -71,13 +79,15 @@ while current_time<time_stop:
         print('Date: ' + datetime.datetime.utcfromtimestamp(current_time).strftime('%Y-%m-%d %H:%M:%S') + ', Time to run: ' + str(t1-t0) + ' seconds')
         t0 = ttt.time()
         make_forcing_files(forcing_data, asynch_data, current_time)
-    comm.Barrier()
+    cfull.Barrier()
     for n in ens_list:
         if n < ens_num:
             n_idx = np.nonzero(ens_list==n)[0][0]
             create_gbl(n, global_params[:,n_idx], asynch_data, current_time, time_step, num_steps)
             if i==0:
-                asynch = asynchsolver(comm,my_rank)
+                create_tmp_folder(asynch_data,n)
+                import pdb; pdb.set_trace()
+                asynch = asynchsolver(csmall,small_rank)
                 asynch.Parse_GBL(str(asynch_data['tmp_folder'] + str(n) + '.gbl'))
                 asynch.Load_Network()
                 asynch.Partition_Network()
@@ -105,6 +115,7 @@ while current_time<time_stop:
             asynch.Prepare_Temp_Files()
             
             #Advance solver
+            import pdb; pdb.set_trace()
             asynch.Advance(True)
             
             #Create output files
@@ -113,11 +124,12 @@ while current_time<time_stop:
             outarray = np.fromstring(output_string,sep=',')[:-1] #removes extra comma introduced in writing csv
             outvec = np.expand_dims(np.reshape(outarray,(num_steps+1,-1))[1:,:].flatten(),1)
             state[:,n_idx] = np.concatenate((outvec,parameters)).flatten()
+    import pdb; pdb.set_trace()
     sendvbuf = state.flatten()
     recvbuf = None
     if my_rank == 0:
-        recvbuff = np.empty((nproc,(link_num*num_step*link_var_num+param_num)*my_ens_num))
-    com.Gather(sendvbuf, recvbuf, root=0)
+        recvbuff = np.empty((nproc,(link_num*num_steps*link_var_num+param_num)*my_ens_num))
+    cfull.Gather(sendvbuf, recvbuf, root=0)
     #transform into something usable
     if my_rank == 0:    
         for pert in asynch_data['var_perturb_type']:
@@ -146,7 +158,7 @@ while current_time<time_stop:
     recvbuf = np.empty((my_ens_num*(param_num+link_var_num*link_num)))
     if my_rank == 0:
         sendvbuf = flattened_ninit
-    com.Scatter(sendvbuf, recvbuf, root=0)
+    cfull.Scatter(sendvbuf, recvbuf, root=0)
     #transform into something usable
 if my_rank == 0:
     remove_files(asynch_data['tmp_folder'])

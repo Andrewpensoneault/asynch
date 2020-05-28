@@ -21,10 +21,12 @@ void Free_PythonInterface(asynchsolver* asynch)
 
 //Routines for the Python interface **************************************
 
-asynchsolver* Asynch_Init_py(int numprocs,int* ranks)
+asynchsolver* Asynch_Init_py(void *ptr)
 {
 	//!!!! Assumes MPI_COMM_WORLD. This should create a new communicator and pass that along. !!!!
-	asynchsolver* asynch = Asynch_Init(MPI_COMM_WORLD,NULL,NULL);
+        MPI_Comm comm;
+        comm =  *((MPI_Comm *) ptr);  
+	asynchsolver* asynch = Asynch_Init(comm,NULL,NULL);
 
 	asynch->ExternalInterface = malloc(sizeof(PythonInterface));
 

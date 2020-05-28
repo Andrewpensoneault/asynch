@@ -26,7 +26,7 @@ extern int my_rank;
 
 io* BuildIO(UnivVars* GlobalVars);
 
-ConnData* ReadDBC(char* filename,unsigned int string_size);
+ConnData* ReadDBC(char* filename,unsigned int string_size, MPI_Comm comm);
 void WriteValue(FILE* outputfile,char* specifier,char* data_storage,short int data_type,char* delim);
 unsigned int WriteStep(double t,VEC* y,UnivVars* GlobalVars,VEC* params,unsigned int state,FILE* outputfile,void* user,long int* pos_offset);
 unsigned int CatBinaryToString(char* submission,char* specifier,char* data_storage,short int data_type,char* delim);

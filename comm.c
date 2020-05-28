@@ -8,7 +8,7 @@
 //Link** sys: The river system.
 //UnivVars* GlobalVars: Contains all the information that is shared by every link in the system.
 //Note: a few "silly" initializations take place before the loops. This prevents Valgrind from complaining on some systems about pointless errors.
-void Transfer_Data(TransData* my_data,Link** sys,int* assignments,UnivVars* GlobalVars)
+void Transfer_Data(TransData* my_data,Link** sys,int* assignments,UnivVars* GlobalVars, MPI_Comm comm)
 {
 	int i,j,m,n,sender,steps_to_transfer = 0,curr_idx = 0,parval,s,dim,flag,position,total_links,count,removed = 0,order = 0,num_times = 0;
 	unsigned int loc = 0,l,num_dense;
@@ -55,15 +55,15 @@ void Transfer_Data(TransData* my_data,Link** sys,int* assignments,UnivVars* Glob
 						current->steps_on_diff_proc += steps_to_transfer;
 
 						//Pack the steps
-						MPI_Pack(&(current->location),1,MPI_INT,my_data->send_buffer[i],my_data->send_buffer_size[i],&position,MPI_COMM_WORLD);
-						MPI_Pack(&steps_to_transfer,1,MPI_INT,my_data->send_buffer[i],my_data->send_buffer_size[i],&position,MPI_COMM_WORLD);
+						MPI_Pack(&(current->location),1,MPI_INT,my_data->send_buffer[i],my_data->send_buffer_size[i],&position,comm);
+						MPI_Pack(&steps_to_transfer,1,MPI_INT,my_data->send_buffer[i],my_data->send_buffer_size[i],&position,comm);
 						for(m=0;m<steps_to_transfer;m++)
 						{
-							MPI_Pack(&(node->t),1,MPI_DOUBLE,my_data->send_buffer[i],my_data->send_buffer_size[i],&position,MPI_COMM_WORLD);
-							MPI_Pack(node->y_approx->ve,dim,MPI_DOUBLE,my_data->send_buffer[i],my_data->send_buffer_size[i],&position,MPI_COMM_WORLD);
+							MPI_Pack(&(node->t),1,MPI_DOUBLE,my_data->send_buffer[i],my_data->send_buffer_size[i],&position,comm);
+							MPI_Pack(node->y_approx->ve,dim,MPI_DOUBLE,my_data->send_buffer[i],my_data->send_buffer_size[i],&position,comm);
 							for(n=0;n<s;n++)
-								MPI_Pack(node->k[n]->ve,num_dense,MPI_DOUBLE,my_data->send_buffer[i],my_data->send_buffer_size[i],&position,MPI_COMM_WORLD);
-							MPI_Pack(&(node->state),1,MPI_INT,my_data->send_buffer[i],my_data->send_buffer_size[i],&position,MPI_COMM_WORLD);
+								MPI_Pack(node->k[n]->ve,num_dense,MPI_DOUBLE,my_data->send_buffer[i],my_data->send_buffer_size[i],&position,comm);
+							MPI_Pack(&(node->state),1,MPI_INT,my_data->send_buffer[i],my_data->send_buffer_size[i],&position,comm);
 
 							Remove_Head_Node(current->list);
 							node = node->next;
@@ -71,11 +71,11 @@ void Transfer_Data(TransData* my_data,Link** sys,int* assignments,UnivVars* Glob
 						}
 
 						//Pack the discontinuity times
-						MPI_Pack(&(current->discont_send_count),1,MPI_INT,my_data->send_buffer[i],my_data->send_buffer_size[i],&position,MPI_COMM_WORLD);
+						MPI_Pack(&(current->discont_send_count),1,MPI_INT,my_data->send_buffer[i],my_data->send_buffer_size[i],&position,comm);
 						for(m=0;(unsigned int)m<current->discont_send_count;m++)
 						{
-							MPI_Pack(&(current->discont_send[m]),1,MPI_DOUBLE,my_data->send_buffer[i],my_data->send_buffer_size[i],&position,MPI_COMM_WORLD);
-							MPI_Pack(&(current->discont_order_send[m]),1,MPI_INT,my_data->send_buffer[i],my_data->send_buffer_size[i],&position,MPI_COMM_WORLD);
+							MPI_Pack(&(current->discont_send[m]),1,MPI_DOUBLE,my_data->send_buffer[i],my_data->send_buffer_size[i],&position,comm);
+							MPI_Pack(&(current->discont_order_send[m]),1,MPI_INT,my_data->send_buffer[i],my_data->send_buffer_size[i],&position,comm);
 						}
 
 						current->discont_send_count = 0;
@@ -88,8 +88,8 @@ void Transfer_Data(TransData* my_data,Link** sys,int* assignments,UnivVars* Glob
 					current = my_data->receive_data[i][l];
 					if(current->iters_removed > 0)
 					{
-						MPI_Pack(&(current->location),1,MPI_UNSIGNED,my_data->send_buffer[i],my_data->send_buffer_size[i],&position,MPI_COMM_WORLD);
-						MPI_Pack(&(current->iters_removed),1,MPI_INT,my_data->send_buffer[i],my_data->send_buffer_size[i],&position,MPI_COMM_WORLD);
+						MPI_Pack(&(current->location),1,MPI_UNSIGNED,my_data->send_buffer[i],my_data->send_buffer_size[i],&position,comm);
+						MPI_Pack(&(current->iters_removed),1,MPI_INT,my_data->send_buffer[i],my_data->send_buffer_size[i],&position,comm);
 						current->iters_removed = 0;
 					}
 				}
@@ -99,7 +99,7 @@ void Transfer_Data(TransData* my_data,Link** sys,int* assignments,UnivVars* Glob
 				{
 					my_data->sent_flag[i] = 1;
 					(my_data->num_sent[i])++;
-					MPI_Isend(my_data->send_buffer[i],position,MPI_PACKED,i,total_links,MPI_COMM_WORLD,my_data->send_requests[i]);
+					MPI_Isend(my_data->send_buffer[i],position,MPI_PACKED,i,total_links,comm,my_data->send_requests[i]);
 				}
 			} //End if(flag)
 		}
@@ -121,10 +121,10 @@ void Transfer_Data(TransData* my_data,Link** sys,int* assignments,UnivVars* Glob
 				//Unpack data
 				for(j=0;j<total_links;j++)
 				{
-					MPI_Unpack(my_data->receive_buffer[i],count,&position,&curr_idx,1,MPI_INT,MPI_COMM_WORLD);
+					MPI_Unpack(my_data->receive_buffer[i],count,&position,&curr_idx,1,MPI_INT,comm);
 
 					//Unpack the steps
-					MPI_Unpack(my_data->receive_buffer[i],count,&position,&steps_to_transfer,1,MPI_INT,MPI_COMM_WORLD);
+					MPI_Unpack(my_data->receive_buffer[i],count,&position,&steps_to_transfer,1,MPI_INT,comm);
 					current = sys[curr_idx];
 					s = current->list->s;
 					dim = current->dim;
@@ -134,11 +134,11 @@ void Transfer_Data(TransData* my_data,Link** sys,int* assignments,UnivVars* Glob
 					{
 						node = New_Step(current->list);
 						node->t = 0.0; node->state = 0;
-						MPI_Unpack(my_data->receive_buffer[i],count,&position,&(node->t),1,MPI_DOUBLE,MPI_COMM_WORLD);
-						MPI_Unpack(my_data->receive_buffer[i],count,&position,node->y_approx->ve,dim,MPI_DOUBLE,MPI_COMM_WORLD);
+						MPI_Unpack(my_data->receive_buffer[i],count,&position,&(node->t),1,MPI_DOUBLE,comm);
+						MPI_Unpack(my_data->receive_buffer[i],count,&position,node->y_approx->ve,dim,MPI_DOUBLE,comm);
 						for(n=0;n<s;n++)
-							MPI_Unpack(my_data->receive_buffer[i],count,&position,node->k[n]->ve,num_dense,MPI_DOUBLE,MPI_COMM_WORLD);
-						MPI_Unpack(my_data->receive_buffer[i],count,&position,&(node->state),1,MPI_INT,MPI_COMM_WORLD);
+							MPI_Unpack(my_data->receive_buffer[i],count,&position,node->k[n]->ve,num_dense,MPI_DOUBLE,comm);
+						MPI_Unpack(my_data->receive_buffer[i],count,&position,&(node->state),1,MPI_INT,comm);
 					}
 
 					if(steps_to_transfer > 0)
@@ -159,11 +159,11 @@ void Transfer_Data(TransData* my_data,Link** sys,int* assignments,UnivVars* Glob
 					}
 
 					//Unpack the discontinuity times
-					MPI_Unpack(my_data->receive_buffer[i],count,&position,&num_times,1,MPI_INT,MPI_COMM_WORLD);
+					MPI_Unpack(my_data->receive_buffer[i],count,&position,&num_times,1,MPI_INT,comm);
 					for(m=0;m<num_times;m++)
 					{
-						MPI_Unpack(my_data->receive_buffer[i],count,&position,&discont_time,1,MPI_DOUBLE,MPI_COMM_WORLD);
-						MPI_Unpack(my_data->receive_buffer[i],count,&position,&order,1,MPI_INT,MPI_COMM_WORLD);
+						MPI_Unpack(my_data->receive_buffer[i],count,&position,&discont_time,1,MPI_DOUBLE,comm);
+						MPI_Unpack(my_data->receive_buffer[i],count,&position,&order,1,MPI_INT,comm);
 						prev = current;
 						next = current->c;
 						for(n=order;(unsigned int)n<GlobalVars->max_localorder && next != NULL;n++)
@@ -187,8 +187,8 @@ void Transfer_Data(TransData* my_data,Link** sys,int* assignments,UnivVars* Glob
 				//Unpack iterations
 				while(position < count)
 				{
-					MPI_Unpack(my_data->receive_buffer[i],count,&position,&loc,1,MPI_UNSIGNED,MPI_COMM_WORLD);
-					MPI_Unpack(my_data->receive_buffer[i],count,&position,&removed,1,MPI_INT,MPI_COMM_WORLD);
+					MPI_Unpack(my_data->receive_buffer[i],count,&position,&loc,1,MPI_UNSIGNED,comm);
+					MPI_Unpack(my_data->receive_buffer[i],count,&position,&removed,1,MPI_INT,comm);
 					sys[loc]->steps_on_diff_proc -= removed;
 				}
 
@@ -203,12 +203,12 @@ void Transfer_Data(TransData* my_data,Link** sys,int* assignments,UnivVars* Glob
 	{
 		if(!(my_data->receiving_flag[i]))
 		{
-			MPI_Iprobe(i,MPI_ANY_TAG,MPI_COMM_WORLD,&flag,&status);
+			MPI_Iprobe(i,MPI_ANY_TAG,comm,&flag,&status);
 			if(flag)
 			{
 				total_links = status.MPI_TAG;
 				MPI_Get_count(&status,MPI_PACKED,&count);
-				MPI_Irecv(my_data->receive_buffer[i],count,MPI_PACKED,i,total_links,MPI_COMM_WORLD,my_data->receive_requests[i]);
+				MPI_Irecv(my_data->receive_buffer[i],count,MPI_PACKED,i,total_links,comm,my_data->receive_requests[i]);
 				my_data->receiving_flag[i] = 1;
 			}
 		}
@@ -220,7 +220,7 @@ void Transfer_Data(TransData* my_data,Link** sys,int* assignments,UnivVars* Glob
 //TransData* my_data: Contains information about how the processes will communicate.
 //Link** sys: The river system.
 //UnivVars* GlobalVars: Contains all the information that is shared by every link in the system.
-void Transfer_Data_Finish(TransData* my_data,Link** sys,int* assignments,UnivVars* GlobalVars)
+void Transfer_Data_Finish(TransData* my_data,Link** sys,int* assignments,UnivVars* GlobalVars, MPI_Comm comm)
 {
 	int i,j,m,n,steps_to_transfer = 0,curr_idx = 0,s,dim,flag,position,total_links,sender,count,removed = 0,order = 0,num_times = 0;
 	unsigned int loc = 0,parval,l,num_dense;
@@ -288,16 +288,16 @@ void Transfer_Data_Finish(TransData* my_data,Link** sys,int* assignments,UnivVar
 							current->steps_on_diff_proc += steps_to_transfer;
 
 							//Pack the steps
-							MPI_Pack(&(current->location),1,MPI_INT,my_data->send_buffer[i],my_data->send_buffer_size[i],&position,MPI_COMM_WORLD);
-							MPI_Pack(&steps_to_transfer,1,MPI_INT,my_data->send_buffer[i],my_data->send_buffer_size[i],&position,MPI_COMM_WORLD);
+							MPI_Pack(&(current->location),1,MPI_INT,my_data->send_buffer[i],my_data->send_buffer_size[i],&position,comm);
+							MPI_Pack(&steps_to_transfer,1,MPI_INT,my_data->send_buffer[i],my_data->send_buffer_size[i],&position,comm);
 							for(m=0;m<steps_to_transfer;m++)
 							{
-								MPI_Pack(&(node->t),1,MPI_DOUBLE,my_data->send_buffer[i],my_data->send_buffer_size[i], &position,MPI_COMM_WORLD);
-								MPI_Pack(node->y_approx->ve,dim,MPI_DOUBLE,my_data->send_buffer[i],my_data->send_buffer_size[i],&position,MPI_COMM_WORLD);
+								MPI_Pack(&(node->t),1,MPI_DOUBLE,my_data->send_buffer[i],my_data->send_buffer_size[i], &position,comm);
+								MPI_Pack(node->y_approx->ve,dim,MPI_DOUBLE,my_data->send_buffer[i],my_data->send_buffer_size[i],&position,comm);
 								for(n=0;n<s;n++)
-									MPI_Pack(node->k[n]->ve,num_dense,MPI_DOUBLE,my_data->send_buffer[i],my_data->send_buffer_size[i],&position,MPI_COMM_WORLD);
-									//MPI_Pack(node->k[n]->ve,dim,MPI_DOUBLE,my_data->send_buffer[i],my_data->send_buffer_size[i],&position,MPI_COMM_WORLD);
-								MPI_Pack(&(node->state),1,MPI_INT,my_data->send_buffer[i],my_data->send_buffer_size[i],&position,MPI_COMM_WORLD);
+									MPI_Pack(node->k[n]->ve,num_dense,MPI_DOUBLE,my_data->send_buffer[i],my_data->send_buffer_size[i],&position,comm);
+									//MPI_Pack(node->k[n]->ve,dim,MPI_DOUBLE,my_data->send_buffer[i],my_data->send_buffer_size[i],&position,comm);
+								MPI_Pack(&(node->state),1,MPI_INT,my_data->send_buffer[i],my_data->send_buffer_size[i],&position,comm);
 
 								Remove_Head_Node(current->list);
 								node = node->next;
@@ -305,11 +305,11 @@ void Transfer_Data_Finish(TransData* my_data,Link** sys,int* assignments,UnivVar
 							}
 
 							//Pack the discontinuity times
-							MPI_Pack(&(current->discont_send_count),1,MPI_INT,my_data->send_buffer[i],my_data->send_buffer_size[i],&position,MPI_COMM_WORLD);
+							MPI_Pack(&(current->discont_send_count),1,MPI_INT,my_data->send_buffer[i],my_data->send_buffer_size[i],&position,comm);
 							for(m=0;(unsigned int)m<current->discont_send_count;m++)
 							{
-								MPI_Pack(&(current->discont_send[m]),1,MPI_DOUBLE,my_data->send_buffer[i],my_data->send_buffer_size[i],&position,MPI_COMM_WORLD);
-								MPI_Pack(&(current->discont_order_send[m]),1,MPI_INT,my_data->send_buffer[i],my_data->send_buffer_size[i],&position,MPI_COMM_WORLD);
+								MPI_Pack(&(current->discont_send[m]),1,MPI_DOUBLE,my_data->send_buffer[i],my_data->send_buffer_size[i],&position,comm);
+								MPI_Pack(&(current->discont_order_send[m]),1,MPI_INT,my_data->send_buffer[i],my_data->send_buffer_size[i],&position,comm);
 							}
 
 							current->discont_send_count = 0;
@@ -323,8 +323,8 @@ void Transfer_Data_Finish(TransData* my_data,Link** sys,int* assignments,UnivVar
 						if(current->iters_removed > 0)
 						{
 							data_sent++;	//See Note2 above
-							MPI_Pack(&(current->location),1,MPI_UNSIGNED,my_data->send_buffer[i],my_data->send_buffer_size[i], &position,MPI_COMM_WORLD);
-							MPI_Pack(&(current->iters_removed),1,MPI_INT,my_data->send_buffer[i],my_data->send_buffer_size[i],&position,MPI_COMM_WORLD);
+							MPI_Pack(&(current->location),1,MPI_UNSIGNED,my_data->send_buffer[i],my_data->send_buffer_size[i], &position,comm);
+							MPI_Pack(&(current->iters_removed),1,MPI_INT,my_data->send_buffer[i],my_data->send_buffer_size[i],&position,comm);
 							current->iters_removed = 0;
 						}
 					}
@@ -334,7 +334,7 @@ void Transfer_Data_Finish(TransData* my_data,Link** sys,int* assignments,UnivVar
 					{
 						my_data->sent_flag[i] = 1;
 						(my_data->num_sent[i])++;
-						MPI_Isend(my_data->send_buffer[i],position,MPI_PACKED,i,total_links,MPI_COMM_WORLD,my_data->send_requests[i]);
+						MPI_Isend(my_data->send_buffer[i],position,MPI_PACKED,i,total_links,comm,my_data->send_requests[i]);
 					}
 				} //End if(flag)
 			}
@@ -356,8 +356,8 @@ void Transfer_Data_Finish(TransData* my_data,Link** sys,int* assignments,UnivVar
 					//Unpack data
 					for(j=0;j<total_links;j++)
 					{
-						MPI_Unpack(my_data->receive_buffer[i],count,&position,&curr_idx,1,MPI_INT,MPI_COMM_WORLD);
-						MPI_Unpack(my_data->receive_buffer[i],count,&position,&steps_to_transfer,1,MPI_INT,MPI_COMM_WORLD);
+						MPI_Unpack(my_data->receive_buffer[i],count,&position,&curr_idx,1,MPI_INT,comm);
+						MPI_Unpack(my_data->receive_buffer[i],count,&position,&steps_to_transfer,1,MPI_INT,comm);
 						current = sys[curr_idx];
 						s = current->list->s;
 						dim = current->dim;
@@ -367,12 +367,12 @@ void Transfer_Data_Finish(TransData* my_data,Link** sys,int* assignments,UnivVar
 						{
 							node = New_Step(current->list);
 							node->t = 0.0; node->state = 0;
-							MPI_Unpack(my_data->receive_buffer[i],count,&position,&(node->t),1,MPI_DOUBLE,MPI_COMM_WORLD);
-							MPI_Unpack(my_data->receive_buffer[i],count,&position,node->y_approx->ve,dim,MPI_DOUBLE,MPI_COMM_WORLD);
+							MPI_Unpack(my_data->receive_buffer[i],count,&position,&(node->t),1,MPI_DOUBLE,comm);
+							MPI_Unpack(my_data->receive_buffer[i],count,&position,node->y_approx->ve,dim,MPI_DOUBLE,comm);
 							for(n=0;n<s;n++)
-								MPI_Unpack(my_data->receive_buffer[i],count,&position,node->k[n]->ve,num_dense,MPI_DOUBLE,MPI_COMM_WORLD);
-								//MPI_Unpack(my_data->receive_buffer[i],count,&position,node->k[n]->ve,dim,MPI_DOUBLE,MPI_COMM_WORLD);
-							MPI_Unpack(my_data->receive_buffer[i],count,&position,&(node->state),1,MPI_INT,MPI_COMM_WORLD);
+								MPI_Unpack(my_data->receive_buffer[i],count,&position,node->k[n]->ve,num_dense,MPI_DOUBLE,comm);
+								//MPI_Unpack(my_data->receive_buffer[i],count,&position,node->k[n]->ve,dim,MPI_DOUBLE,comm);
+							MPI_Unpack(my_data->receive_buffer[i],count,&position,&(node->state),1,MPI_INT,comm);
 						}
 
 						if(steps_to_transfer > 0)
@@ -393,11 +393,11 @@ void Transfer_Data_Finish(TransData* my_data,Link** sys,int* assignments,UnivVar
 						}
 
 						//Unpack the discontinuity times
-						MPI_Unpack(my_data->receive_buffer[i],count,&position,&num_times,1,MPI_INT,MPI_COMM_WORLD);
+						MPI_Unpack(my_data->receive_buffer[i],count,&position,&num_times,1,MPI_INT,comm);
 						for(m=0;m<num_times;m++)
 						{
-							MPI_Unpack(my_data->receive_buffer[i],count,&position,&discont_time,1,MPI_DOUBLE,MPI_COMM_WORLD);
-							MPI_Unpack(my_data->receive_buffer[i],count,&position,&order,1,MPI_INT,MPI_COMM_WORLD);
+							MPI_Unpack(my_data->receive_buffer[i],count,&position,&discont_time,1,MPI_DOUBLE,comm);
+							MPI_Unpack(my_data->receive_buffer[i],count,&position,&order,1,MPI_INT,comm);
 
 							prev = current;
 							next = current->c;
@@ -420,8 +420,8 @@ void Transfer_Data_Finish(TransData* my_data,Link** sys,int* assignments,UnivVar
 					//Unpack iterations (need this for rainfall so the last step will get sent)
 					while(position < count)
 					{
-						MPI_Unpack(my_data->receive_buffer[i],count,&position,&loc,1,MPI_UNSIGNED,MPI_COMM_WORLD);
-						MPI_Unpack(my_data->receive_buffer[i],count,&position,&removed,1,MPI_INT,MPI_COMM_WORLD);
+						MPI_Unpack(my_data->receive_buffer[i],count,&position,&loc,1,MPI_UNSIGNED,comm);
+						MPI_Unpack(my_data->receive_buffer[i],count,&position,&removed,1,MPI_INT,comm);
 						sys[loc]->steps_on_diff_proc -= removed;
 					}
 
@@ -436,12 +436,12 @@ void Transfer_Data_Finish(TransData* my_data,Link** sys,int* assignments,UnivVar
 		{
 			if(!my_data->receiving_flag[i])
 			{
-				MPI_Iprobe(i,MPI_ANY_TAG,MPI_COMM_WORLD,&flag,&status);
+				MPI_Iprobe(i,MPI_ANY_TAG,comm,&flag,&status);
 				if(flag)
 				{
 					total_links = status.MPI_TAG;
 					MPI_Get_count(&status,MPI_PACKED,&count);
-					MPI_Irecv(my_data->receive_buffer[i],count,MPI_PACKED,i,total_links,MPI_COMM_WORLD,my_data->receive_requests[i]);
+					MPI_Irecv(my_data->receive_buffer[i],count,MPI_PACKED,i,total_links,comm,my_data->receive_requests[i]);
 					my_data->receiving_flag[i] = 1;
 				}
 			}
@@ -450,7 +450,7 @@ void Transfer_Data_Finish(TransData* my_data,Link** sys,int* assignments,UnivVar
 }
 
 
-void Exchange_InitState_At_Forced(Link** system,unsigned int N,unsigned int* assignments,short int* getting,unsigned int* res_list,unsigned int res_size,unsigned int** id_to_loc,UnivVars* GlobalVars)
+void Exchange_InitState_At_Forced(Link** system,unsigned int N,unsigned int* assignments,short int* getting,unsigned int* res_list,unsigned int res_size,unsigned int** id_to_loc,UnivVars* GlobalVars, MPI_Comm comm)
 {
 	unsigned int j,loc;
 
@@ -468,10 +468,10 @@ void Exchange_InitState_At_Forced(Link** system,unsigned int N,unsigned int* ass
 
 				//Check if this initial state needs to be sent to other procs
 				if(system[loc]->c && assignments[system[loc]->c->location] != my_rank)
-					MPI_Send(system[loc]->list->tail->y_approx->ve,system[loc]->dim,MPI_DOUBLE,assignments[system[loc]->c->location],0,MPI_COMM_WORLD);
+					MPI_Send(system[loc]->list->tail->y_approx->ve,system[loc]->dim,MPI_DOUBLE,assignments[system[loc]->c->location],0,comm);
 			}
 			else if(getting[loc])
-				MPI_Recv(system[loc]->list->tail->y_approx->ve,system[loc]->dim,MPI_DOUBLE,assignments[loc],0,MPI_COMM_WORLD,MPI_STATUS_IGNORE);
+				MPI_Recv(system[loc]->list->tail->y_approx->ve,system[loc]->dim,MPI_DOUBLE,assignments[loc],0,comm,MPI_STATUS_IGNORE);
 		}
 	}
 }
@@ -512,11 +512,11 @@ TransData* Initialize_TransData()
 //Makes sure all sends have completed and receives any outstanding data that has been sent to
 //this process. Resets the sent and receiving flags.
 //TransData* data: The data to be cleaned
-void Flush_TransData(TransData* data)
+void Flush_TransData(TransData* data, MPI_Comm comm)
 {
 	int i,j;
 	MPI_Status status;
-	MPI_Barrier(MPI_COMM_WORLD);
+	MPI_Barrier(comm);
 
 	//Receive all outstanding messages where a recv has been posted
 	for(i=0;i<np;i++)
@@ -543,7 +543,7 @@ void Flush_TransData(TransData* data)
 
 	//See how many messages remain to be received
 	for(i=0;i<np;i++)
-		MPI_Scatter(data->num_sent,1,MPI_INT,&(data->totals[i]),1,MPI_INT,i,MPI_COMM_WORLD);
+		MPI_Scatter(data->num_sent,1,MPI_INT,&(data->totals[i]),1,MPI_INT,i,comm);
 
 	//Make sure all sends are complete
 	for(i=0;i<np;i++)
@@ -559,7 +559,7 @@ void Flush_TransData(TransData* data)
 	for(i=0;i<np;i++)
 	{
 		for(j=data->num_recv[i];(unsigned int)j<data->totals[i];j++)
-			MPI_Recv(data->receive_buffer[i],data->receive_buffer_size[i],MPI_PACKED,i,MPI_ANY_TAG,MPI_COMM_WORLD,&status);
+			MPI_Recv(data->receive_buffer[i],data->receive_buffer_size[i],MPI_PACKED,i,MPI_ANY_TAG,comm,&status);
 	}
 
 	for(i=0;i<np;i++)
@@ -568,18 +568,18 @@ void Flush_TransData(TransData* data)
 		data->num_sent[i] = 0;
 	}
 
-	MPI_Barrier(MPI_COMM_WORLD);
+	MPI_Barrier(comm);
 }
 
 //Free space for a transmitting scheme
 //TransData* data: The data to be freed
-void TransData_Free(TransData* data)
+void TransData_Free(TransData* data, MPI_Comm comm)
 {
 	int i;
 
 	//Clean out any left over messages.
 	MPI_Finalized(&i);
-	if(!i)	Flush_TransData(data);
+	if(!i)	Flush_TransData(data, comm);
 
 	//Free memory
 	for(i=0;i<np;i++)	free(data->send_data[i]);

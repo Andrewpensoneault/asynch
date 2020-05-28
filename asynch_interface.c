@@ -9,19 +9,16 @@ asynchsolver* Asynch_Init(MPI_Comm comm,int* argc,char** argv[])
 
 	asynchsolver* asynch = (asynchsolver*) malloc(sizeof(asynchsolver));
 	asynch->comm = comm;
-	if(comm != MPI_COMM_WORLD)	printf("Warning: asynchsolver object my not work fully with in a comm other than MPI_COMM_WORLD.\n");
 
 	//Initialize MPI stuff
-	MPI_Initialized(&init_flag);
 	asynch->mpi_initialized = !init_flag;
-	if(asynch->mpi_initialized)	MPI_Init(argc,argv);	//Initialize MPI
 	MPI_Comm_rank(comm,&(asynch->my_rank));
 	MPI_Comm_size(comm,&(asynch->np));
-
 	//Sets the global variables
 	np = asynch->np;
 	my_rank = asynch->my_rank;
 
+        printf("%d\n",np);
 	//Initialize asynchsolver members
 	asynch->outputfile = NULL;
 	asynch->getting = NULL;
@@ -105,7 +102,7 @@ int Asynch_Custom_Partitioning(asynchsolver* asynch,int* (*Partition_Routine)(Li
 void Asynch_Parse_GBL(asynchsolver* asynch,char* gbl_filename)
 {
 	//Read in .gbl file
-	asynch->GlobalVars = Read_Global_Data(gbl_filename,&(asynch->GlobalErrors),(Forcing**) &(asynch->forcings),asynch->db_connections,asynch->rkdfilename,asynch->custom_model,asynch->ExternalInterface);
+	asynch->GlobalVars = Read_Global_Data(gbl_filename,&(asynch->GlobalErrors),(Forcing**) &(asynch->forcings),asynch->db_connections,asynch->rkdfilename,asynch->custom_model,asynch->ExternalInterface,asynch->comm);
 	if(!asynch->GlobalVars)
 	{
 		if(my_rank == 0)	printf("[%i]: An error occurred reading the .gbl file. See above messages for details.\n",my_rank);
@@ -125,7 +122,7 @@ void Asynch_Load_Network(asynchsolver* asynch)
 		MPI_Abort(asynch->comm,1);
 	}
 
-	asynch->sys = Create_River_Network(asynch->GlobalVars,&(asynch->N),&(asynch->id_to_loc),asynch->db_connections);
+	asynch->sys = Create_River_Network(asynch->GlobalVars,&(asynch->N),&(asynch->id_to_loc),asynch->db_connections, asynch->comm);
 	if(!asynch->sys)	MPI_Abort(asynch->comm,1);
 	asynch->setup_topo = 1;
 	MPI_Barrier(asynch->comm);
@@ -153,7 +150,7 @@ void Asynch_Load_Network_Parameters(asynchsolver* asynch,short int load_all)
 		MPI_Abort(asynch->comm,1);
 	}
 
-	i = Load_Local_Parameters(asynch->sys,asynch->N,asynch->my_sys,asynch->my_N,asynch->assignments,asynch->getting,asynch->id_to_loc,asynch->GlobalVars,asynch->db_connections,load_all,asynch->custom_model,asynch->ExternalInterface);
+	i = Load_Local_Parameters(asynch->sys,asynch->N,asynch->my_sys,asynch->my_N,asynch->assignments,asynch->getting,asynch->id_to_loc,asynch->GlobalVars,asynch->db_connections,load_all,asynch->custom_model,asynch->ExternalInterface,asynch->comm);
 	if(i)	MPI_Abort(asynch->comm,1);
 	asynch->setup_params = 1;
 	MPI_Barrier(asynch->comm);
@@ -189,7 +186,7 @@ void Asynch_Load_Numerical_Error_Data(asynchsolver* asynch)
 		MPI_Abort(asynch->comm,1);
 	}
 
-	i = Build_RKData(asynch->sys,asynch->rkdfilename,asynch->N,asynch->my_sys,asynch->my_N,asynch->assignments,asynch->getting,asynch->GlobalVars,asynch->GlobalErrors,&(asynch->AllMethods),&(asynch->nummethods));
+	i = Build_RKData(asynch->sys,asynch->rkdfilename,asynch->N,asynch->my_sys,asynch->my_N,asynch->assignments,asynch->getting,asynch->GlobalVars,asynch->GlobalErrors,&(asynch->AllMethods),&(asynch->nummethods),asynch->comm);
 	if(i)	MPI_Abort(asynch->comm,1);
 	asynch->setup_rkdata = 1;
 	MPI_Barrier(asynch->comm);
@@ -222,7 +219,7 @@ void Asynch_Initialize_Model(asynchsolver* asynch)
 			sleep(1);
 		MPI_Abort(asynch->comm,1);
 	}
-	i = Initialize_Model(asynch->sys,asynch->N,asynch->my_sys,asynch->my_N,asynch->assignments,asynch->getting,asynch->GlobalVars,asynch->custom_model,asynch->ExternalInterface);
+	i = Initialize_Model(asynch->sys,asynch->N,asynch->my_sys,asynch->my_N,asynch->assignments,asynch->getting,asynch->GlobalVars,asynch->custom_model,asynch->ExternalInterface, asynch->comm);
 	if(i)	MPI_Abort(asynch->comm,1);
 	asynch->setup_initmodel = 1;
 	MPI_Barrier(asynch->comm);
@@ -256,7 +253,7 @@ void Asynch_Load_Initial_Conditions(asynchsolver* asynch)
 		MPI_Abort(asynch->comm,1);
 	}
 
-	i = Load_Initial_Conditions(asynch->sys,asynch->N,asynch->assignments,asynch->getting,asynch->id_to_loc,asynch->GlobalVars,asynch->db_connections,asynch->custom_model,asynch->ExternalInterface);
+	i = Load_Initial_Conditions(asynch->sys,asynch->N,asynch->assignments,asynch->getting,asynch->id_to_loc,asynch->GlobalVars,asynch->db_connections,asynch->custom_model,asynch->ExternalInterface,asynch->comm);
 	if(i)	MPI_Abort(asynch->comm,1);
 	asynch->setup_initconds = 1;
 	MPI_Barrier(asynch->comm);
@@ -274,7 +271,7 @@ void Asynch_Load_Forcings(asynchsolver* asynch)
 		MPI_Abort(asynch->comm,1);
 	}
 
-	i = Load_Forcings(asynch->sys,asynch->N,asynch->my_sys,asynch->my_N,asynch->assignments,asynch->getting,asynch->res_list,asynch->res_size,asynch->id_to_loc,asynch->GlobalVars,asynch->forcings,asynch->db_connections);
+	i = Load_Forcings(asynch->sys,asynch->N,asynch->my_sys,asynch->my_N,asynch->assignments,asynch->getting,asynch->res_list,asynch->res_size,asynch->id_to_loc,asynch->GlobalVars,asynch->forcings,asynch->db_connections,asynch->comm);
 	if(i)	MPI_Abort(asynch->comm,1);
 	asynch->setup_forcings = 1;
 	MPI_Barrier(asynch->comm);
@@ -292,7 +289,7 @@ void Asynch_Load_Dams(asynchsolver* asynch)
 		MPI_Abort(asynch->comm,1);
 	}
 
-	i = Load_Dams(asynch->sys,asynch->N,asynch->my_sys,asynch->my_N,asynch->assignments,asynch->getting,asynch->id_to_loc,asynch->GlobalVars,asynch->GlobalErrors,asynch->db_connections,&(asynch->res_list),&(asynch->res_size),&(asynch->my_res_size));
+	i = Load_Dams(asynch->sys,asynch->N,asynch->my_sys,asynch->my_N,asynch->assignments,asynch->getting,asynch->id_to_loc,asynch->GlobalVars,asynch->GlobalErrors,asynch->db_connections,&(asynch->res_list),&(asynch->res_size),&(asynch->my_res_size), asynch->comm);
 	if(i)	MPI_Abort(asynch->comm,1);
 	asynch->setup_dams = 1;
 	MPI_Barrier(asynch->comm);
@@ -328,7 +325,7 @@ void Asynch_Load_Save_Lists(asynchsolver* asynch)
 		MPI_Abort(asynch->comm,1);
 	}
 
-	i = BuildSaveLists(asynch->sys,asynch->N,asynch->my_sys,asynch->my_N,asynch->assignments,asynch->id_to_loc,asynch->GlobalVars,&(asynch->save_list),&(asynch->save_size),&(asynch->my_save_size),&(asynch->peaksave_list),&(asynch->peaksave_size),&(asynch->my_peaksave_size),asynch->db_connections);
+	i = BuildSaveLists(asynch->sys,asynch->N,asynch->my_sys,asynch->my_N,asynch->assignments,asynch->id_to_loc,asynch->GlobalVars,&(asynch->save_list),&(asynch->save_size),&(asynch->my_save_size),&(asynch->peaksave_list),&(asynch->peaksave_size),&(asynch->my_peaksave_size),asynch->db_connections,asynch->comm);
 	if(i)	MPI_Abort(asynch->comm,1);
 	asynch->setup_savelists = 1;
 	MPI_Barrier(asynch->comm);
@@ -406,7 +403,7 @@ void Asynch_Free(asynchsolver* asynch)
 	int i,finalized_flag;
 
 	Free_DataTypes(&(asynch->dt_info));
-	TransData_Free(asynch->my_data);
+	TransData_Free(asynch->my_data,asynch->comm);
 	for(i=0;i<ASYNCH_MAX_DB_CONNECTIONS;i++)	ConnData_Free(asynch->db_connections[i]);
 	Destroy_ErrorData(asynch->GlobalErrors);
 	Destroy_Workspace(asynch->workspace,asynch->GlobalVars->max_s,asynch->GlobalVars->max_parents);
@@ -451,7 +448,7 @@ void Asynch_Advance(asynchsolver* asynch,short int print_flag)
 	}
 
 	AsynchSolver(asynch->sys,asynch->N,asynch->my_sys,asynch->my_N,asynch->GlobalVars,asynch->assignments,asynch->getting,asynch->res_list,asynch->res_size,
-		asynch->id_to_loc,asynch->workspace,asynch->forcings,asynch->db_connections,asynch->my_data,print_flag,asynch->outputfile);
+		asynch->id_to_loc,asynch->workspace,asynch->forcings,asynch->db_connections,asynch->my_data,print_flag,asynch->outputfile, asynch->comm);
 }
 
 
@@ -650,8 +647,8 @@ char* Asynch_Create_Local_Output(asynchsolver* asynch,char* additional_out, int 
 	// the flush should unpack data instead of trashing it and be put in the Asynch_Advance function call. !!!!
         char* textof = (char*) calloc(output_string_size,sizeof(char));
         int flagof; 
-        Flush_TransData(asynch->my_data);
-	flagof = Interpret_Data(asynch->sys,asynch->GlobalVars,asynch->N,asynch->save_list,asynch->save_size,asynch->my_save_size,asynch->id_to_loc,asynch->assignments,NULL,additional_out,asynch->db_connections[ASYNCH_DB_LOC_HYDRO_OUTPUT],&(asynch->outputfile),textof);
+        Flush_TransData(asynch->my_data,asynch->comm);
+	flagof = Interpret_Data(asynch->sys,asynch->GlobalVars,asynch->N,asynch->save_list,asynch->save_size,asynch->my_save_size,asynch->id_to_loc,asynch->assignments,NULL,additional_out,asynch->db_connections[ASYNCH_DB_LOC_HYDRO_OUTPUT],&(asynch->outputfile),textof,asynch->comm);
 	return textof;
 }
 
@@ -663,7 +660,7 @@ int Asynch_Create_Output(asynchsolver* asynch,char* additional_out)
 	//Flush the transfer buffers
 	//!!!! I'm really not sure if this should be here. Seems like either the sends in processdata should use a different tag, or
 	// the flush should unpack data instead of trashing it and be put in the Asynch_Advance function call. !!!!
-	Flush_TransData(asynch->my_data);
+	Flush_TransData(asynch->my_data,asynch->comm);
 
 	if(asynch->GlobalVars->output_data->CreateOutput && asynch->GlobalVars->hydrosave_flag)
 		return asynch->GlobalVars->output_data->CreateOutput(asynch->sys,asynch->GlobalVars,asynch->N,asynch->save_list,asynch->save_size,asynch->my_save_size,asynch->id_to_loc,asynch->assignments,NULL,additional_out,asynch->db_connections[ASYNCH_DB_LOC_HYDRO_OUTPUT],&(asynch->outputfile));
@@ -1031,7 +1028,7 @@ void Asynch_Set_System_State(asynchsolver* asynch,double t_0,VEC** backup)
 	UnivVars* GlobalVars = asynch->GlobalVars;
 
 	//Reset some things
-	Flush_TransData(asynch->my_data);
+	Flush_TransData(asynch->my_data,asynch->comm);
 	Asynch_Reset_Temp_Files(asynch,t_0);
 
 	//Reset links

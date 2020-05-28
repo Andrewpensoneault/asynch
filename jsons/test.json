@@ -11,7 +11,7 @@
 	"evap_source": "/Users/apensoneault/python_assim_smoother/Input/NFS/evap.mon",
 	"assim_type": "particle",
 	"assim_params": {
-		"ens_num": 50,
+		"ens_num": 4,
 		"likelihood_type": "gaussian",
 		"likelihood_params": {},
 		"eff_samp_threshold": 3,

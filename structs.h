@@ -132,7 +132,7 @@ typedef struct ConnData
 typedef struct io
 {
 	//Temporary Calculations
-	FILE* (*PrepareTempOutput)(struct Link**,unsigned int,int*,struct UnivVars*,unsigned int*,unsigned int,unsigned int,char*,unsigned int**);
+	FILE* (*PrepareTempOutput)(struct Link**,unsigned int,int*,struct UnivVars*,unsigned int*,unsigned int,unsigned int,char*,unsigned int**,MPI_Comm);
 
 	//Prepare Final Output
 	void (*PrepareOutput)(struct UnivVars*,ConnData*);

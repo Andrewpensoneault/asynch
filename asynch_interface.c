@@ -588,7 +588,7 @@ void Asynch_Prepare_Temp_Files(asynchsolver* asynch)
 	}
 
 	if(asynch->GlobalVars->output_data->PrepareTempOutput)
-		asynch->outputfile = asynch->GlobalVars->output_data->PrepareTempOutput(asynch->sys,asynch->N,asynch->assignments,asynch->GlobalVars,asynch->save_list,asynch->save_size,asynch->my_save_size,NULL,asynch->id_to_loc);
+		asynch->outputfile = asynch->GlobalVars->output_data->PrepareTempOutput(asynch->sys,asynch->N,asynch->assignments,asynch->GlobalVars,asynch->save_list,asynch->save_size,asynch->my_save_size,NULL,asynch->id_to_loc,asynch->comm);
 	else
 		asynch->outputfile = NULL;
 }

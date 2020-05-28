@@ -39,6 +39,8 @@ time_step = asynch_data['step_size']
 num_links = len(asynch_data['id_list'])
 id_list = asynch_data['id_list']
 
+asynch_dict = {}
+
 my_ens_num = int(np.ceil(float(ens_num)/float(nproc)))
 ens_list = np.array([i for i in range(my_rank*my_ens_num,(my_rank+1)*my_ens_num)])
 
@@ -86,79 +88,75 @@ while current_time<time_stop:
             create_gbl(n, global_params[:,n_idx], asynch_data, current_time, time_step, num_steps)
             if i==0:
                 create_tmp_folder(asynch_data,n)
-                import pdb; pdb.set_trace()
-                asynch = asynchsolver(csmall,small_rank)
-                asynch.Parse_GBL(str(asynch_data['tmp_folder'] + str(n) + '.gbl'))
-                asynch.Load_Network()
-                asynch.Partition_Network()
-                asynch.Load_Network_Parameters(False)
-                asynch.Load_Dams()
-                asynch.Load_Numerical_Error_Data()
-                asynch.Initialize_Model()
-                asynch.Load_Save_Lists() 
-                asynch.Load_Initial_Conditions()
+                asynch_dict[n] = asynchsolver(csmall,small_rank)
+                asynch_dict[n].Parse_GBL(str(asynch_data['tmp_folder'] + str(n) + '.gbl'))
+                asynch_dict[n].Load_Network()
+                asynch_dict[n].Partition_Network()
+                asynch_dict[n].Load_Network_Parameters(False)
+                asynch_dict[n].Load_Dams()
+                asynch_dict[n].Load_Numerical_Error_Data()
+                asynch_dict[n].Initialize_Model()
+                asynch_dict[n].Load_Save_Lists() 
+                asynch_dict[n].Load_Initial_Conditions()
                 write_times = num_steps
             else:
                 param_next = state[-num_param:,n_idx]
                 init_next = state[-(num_param+num_links*link_var_num):-num_param,n_idx]
                 init = [[init_next[i+j*link_var_num] for i in range(link_var_num)] for j in range(num_links)]
                 
-                asynch.Set_System_State(0,init)
-                asynch.Set_Global_Parameters(param_next.tolist())
+                asynch_dict[n].Set_System_State(0,init)
+                asynch_dict[n].Set_Global_Parameters(param_next.tolist())
                 write_times = 1
-            asynch.Load_Forcings()
-            asynch.Finalize_Network()
-            asynch.Calculate_Step_Sizes()
+            asynch_dict[n].Load_Forcings()
+            asynch_dict[n].Finalize_Network()
+            asynch_dict[n].Calculate_Step_Sizes()
             
             #Prepare outputs
-            asynch.Prepare_Output()
-            asynch.Prepare_Temp_Files()
+            asynch_dict[n].Prepare_Output()
+            asynch_dict[n].Prepare_Temp_Files()
             
             #Advance solver
-            import pdb; pdb.set_trace()
-            asynch.Advance(True)
+            asynch_dict[n].Advance(True)
             
             #Create output files
-            output_string = asynch.Create_Local_Output(None,large_string_len)
-            parameters = np.expand_dims(np.array(asynch.Get_Global_Parameters()[0]),1)
+            output_string = asynch_dict[n].Create_Local_Output(None,large_string_len)
+            parameters = np.expand_dims(np.array(asynch_dict[n].Get_Global_Parameters()[0]),1)
             outarray = np.fromstring(output_string,sep=',')[:-1] #removes extra comma introduced in writing csv
             outvec = np.expand_dims(np.reshape(outarray,(num_steps+1,-1))[1:,:].flatten(),1)
             state[:,n_idx] = np.concatenate((outvec,parameters)).flatten()
-    import pdb; pdb.set_trace()
     sendvbuf = state.flatten()
-    recvbuf = None
+    recvbuff = cfull.gather(sendvbuf, root=0)
     if my_rank == 0:
-        recvbuff = np.empty((nproc,(link_num*num_steps*link_var_num+param_num)*my_ens_num))
-    cfull.Gather(sendvbuf, recvbuf, root=0)
-    #transform into something usable
-    if my_rank == 0:    
+        state_full = np.reshape(sendvbuf,(-1,my_ens_num*nproc))
+        state_full = state_full[:,0:ens_num]
         for pert in asynch_data['var_perturb_type']:
-            state[:-num_param,:] = pert.perturb(state[:-num_param,:])
+            state_full[:-num_param,:] = pert.perturb(state_full[:-num_param,:])
         for pert in asynch_data['param_perturb_type']:
-            state[-num_param:,:] = pert.perturb(state[-num_param:,:])
+            state_full[-num_param:,:] = pert.perturb(state_full[-num_param:,:])
 
         i += 1
         if i == 1: 
             current_time += time_step*60*num_steps 
             time = [current_time - ((num_steps-1)-tt)*60*time_step for tt in range(num_steps)]
-            data = state
+            data = state_full
         else:
             current_time += time_step*60 
             time = [current_time] 
-            data = state[-(num_param+num_links*link_var_num):-num_param,:]
+            data = state_full[-(num_param+num_links*link_var_num):-num_param,:]
         
         for dsource in asynch_data['measure']:
             dsource.get_current_meas(current_time - (num_steps-1)*time_step*60, id_list, link_var_num, num_steps, time_step)
         
-        ens_anal = asynch_data['assim'].assimilate(state,asynch_data,asynch_data['measure'])
+        ens_anal = asynch_data['assim'].assimilate(state_full,asynch_data,asynch_data['measure'])
         weight = asynch_data['assim'].weights
         write_results(data,id_list,link_var_num, time,asynch_data,weight) 
         t1 = ttt.time()
-    sendvbuf = None
-    recvbuf = np.empty((my_ens_num*(param_num+link_var_num*link_num)))
+    sendvbuf = []
+    recvbuf = np.empty((my_ens_num*(num_param+link_var_num*link_num)))
     if my_rank == 0:
-        sendvbuf = flattened_ninit
-    cfull.Scatter(sendvbuf, recvbuf, root=0)
-    #transform into something usable
+        state_full = np.concatenate((state_full,np.zeros((state_full.shape[0],my_ens_num*nproc-ens_num))),axis=1)
+        sendvbuf = state_full.flatten() 
+    recvbuf = cfull.scatter(sendvbuf, root=0)
+    state = np.reshape(recvbuf,(-1,my_ens_num))
 if my_rank == 0:
     remove_files(asynch_data['tmp_folder'])

@@ -32,11 +32,11 @@ class particle():
        weight = weight/np.sum(weight)
        if (1/np.sum(weight**2)) < self.eff_sample_threshold:
            xk = np.arange(self.ens_num)
-           resample_dist = spstats.rv_discrete(values=(xk,w))
-           choice = resample_dist.rvs(size=ens_num)
+           resample_dist = spstats.rv_discrete(values=(xk,weight.flatten()))
+           choice = resample_dist.rvs(size=self.ens_num)
            state = state[:,choice]
-           weight = (1/ens_num)*np.ones((1,ens_num))
-           for pert in self.var_roughting_type:
+           weight = (1/self.ens_num)*np.ones((1,self.ens_num))
+           for pert in self.var_roughing_type:
                state[:-param_num,:] = pert.perturb(state[:-param_num,:])
            for pert in self.param_roughing_type:
                state[-param_num:,:] = pert.perturb(state[-param_num:,:])

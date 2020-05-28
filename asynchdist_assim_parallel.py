@@ -100,8 +100,8 @@ while current_time<time_stop:
                 asynch_dict[n].Load_Initial_Conditions()
                 write_times = num_steps
             else:
-                param_next = state[-num_param:,n_idx]
-                init_next = state[-(num_param+num_links*link_var_num):-num_param,n_idx]
+                param_next = state_last[-num_param:,n_idx]
+                init_next = state_last[-(num_param+num_links*link_var_num):-num_param,n_idx]
                 init = [[init_next[i+j*link_var_num] for i in range(link_var_num)] for j in range(num_links)]
                 
                 asynch_dict[n].Set_System_State(0,init)
@@ -124,10 +124,13 @@ while current_time<time_stop:
             outarray = np.fromstring(output_string,sep=',')[:-1] #removes extra comma introduced in writing csv
             outvec = np.expand_dims(np.reshape(outarray,(num_steps+1,-1))[1:,:].flatten(),1)
             state[:,n_idx] = np.concatenate((outvec,parameters)).flatten()
-    sendvbuf = state.flatten()
-    recvbuff = cfull.gather(sendvbuf, root=0)
+    sendvbuf = state.T.flatten()
+    recvbuf = cfull.gather(sendvbuf, root=0)
     if my_rank == 0:
-        state_full = np.reshape(sendvbuf,(-1,my_ens_num*nproc))
+        state_full_flatten = np.array(recvbuf).flatten()
+        state_full = np.zeros((state.shape[0],my_ens_num*nproc))
+        for num in range(my_ens_num*nproc):
+            state_full[:,num] = state_full_flatten[num*state.shape[0]:(num+1)*state.shape[0]]
         state_full = state_full[:,0:ens_num]
         for pert in asynch_data['var_perturb_type']:
             state_full[:-num_param,:] = pert.perturb(state_full[:-num_param,:])
@@ -151,12 +154,14 @@ while current_time<time_stop:
         weight = asynch_data['assim'].weights
         write_results(data,id_list,link_var_num, time,asynch_data,weight) 
         t1 = ttt.time()
-    sendvbuf = []
-    recvbuf = np.empty((my_ens_num*(num_param+link_var_num*link_num)))
+    sendvbuf = None
+    recvbuf = np.empty((my_ens_num*(num_param+link_var_num*link_num*num_steps)))
     if my_rank == 0:
         state_full = np.concatenate((state_full,np.zeros((state_full.shape[0],my_ens_num*nproc-ens_num))),axis=1)
-        sendvbuf = state_full.flatten() 
-    recvbuf = cfull.scatter(sendvbuf, root=0)
-    state = np.reshape(recvbuf,(-1,my_ens_num))
+        sendvbuf = state_full.T.flatten() 
+        import pdb; pdb.set_trace()
+    cfull.Scatter(sendvbuf, recvbuf, root=0)
+    state = np.reshape(recvbuf,(-1,my_ens_num),order='f')
+    state_last = state[-(num_param+link_num*link_var_num):,:]
 if my_rank == 0:
     remove_files(asynch_data['tmp_folder'])

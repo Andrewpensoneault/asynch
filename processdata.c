@@ -838,7 +838,6 @@ int Interpret_Data(Link** sys,UnivVars* GlobalVars,unsigned int N,unsigned int* 
 		free(positions);
 		free(space_counter);
 
-
 	MPI_Barrier(comm);
 
 	//Reopen the tempfile

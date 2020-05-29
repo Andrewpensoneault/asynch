@@ -55,13 +55,13 @@ class per_variable_percent():
     def perturb(self,ens):
         tmp = np.ones(ens.shape)
         for i in range(self.variable_num):
-            tmp[i::self.variable_num,:] = ens[i::self.variable_num,:]*(1+self.error[i]*np.random.normal(0,1,1))
+            tmp[i::self.variable_num,:] = ens[i::self.variable_num,:]*(1+self.error[i]*np.random.normal(0,1,(1,tmp.shape[1])))
         return tmp
 
     def init_perturb(self,ens):
         tmp = np.ones(ens.shape)
         for i in range(self.variable_num):
-            tmp[i::self.variable_num,:] = ens[i::self.variable_num,:]*(1+self.init_error[i]*np.random.normal(0,1,1))
+            tmp[i::self.variable_num,:] = ens[i::self.variable_num,:]*(1+self.init_error[i]*np.random.normal(0,1,(1,tmp.shape[1])))
         return tmp
     
     def get_var(self,index,ens):

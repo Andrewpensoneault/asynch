@@ -70,6 +70,8 @@ for n in ens_list:
     if n < ens_num:
         n_idx = np.nonzero(ens_list==n)[0][0]
         create_ini(asynch_data['tmp_folder']+str(n)+'.ini',init_id_list,link_var_num,asynch_data['model_num'],init_cond[:,n_idx])
+        asynch_dict[n] = asynchsolver(csmall,small_rank)
+        create_tmp_folder(asynch_data,n)
 
 i = 0
 state = np.zeros((len(ic)*num_steps+num_param,my_ens_num))
@@ -87,8 +89,6 @@ while current_time<time_stop:
             n_idx = np.nonzero(ens_list==n)[0][0]
             create_gbl(n, global_params[:,n_idx], asynch_data, current_time, time_step, num_steps)
             if i==0:
-                create_tmp_folder(asynch_data,n)
-                asynch_dict[n] = asynchsolver(csmall,small_rank)
                 asynch_dict[n].Parse_GBL(str(asynch_data['tmp_folder'] + str(n) + '.gbl'))
                 asynch_dict[n].Load_Network()
                 asynch_dict[n].Partition_Network()
@@ -102,7 +102,7 @@ while current_time<time_stop:
             else:
                 param_next = state_last[-num_param:,n_idx]
                 init_next = state_last[-(num_param+num_links*link_var_num):-num_param,n_idx]
-                init = [[init_next[i+j*link_var_num] for i in range(link_var_num)] for j in range(num_links)]
+                init = [[init_next[k+j*link_var_num] for k in range(link_var_num)] for j in range(num_links)]
                 
                 asynch_dict[n].Set_System_State(0,init)
                 asynch_dict[n].Set_Global_Parameters(param_next.tolist())
@@ -113,19 +113,29 @@ while current_time<time_stop:
             
             #Prepare outputs
             asynch_dict[n].Prepare_Output()
-            asynch_dict[n].Prepare_Temp_Files()
             
             #Advance solver
-            asynch_dict[n].Advance(True)
-            
-            #Create output files
-            output_string = asynch_dict[n].Create_Local_Output(None,large_string_len)
-            parameters = np.expand_dims(np.array(asynch_dict[n].Get_Global_Parameters()[0]),1)
-            outarray = np.fromstring(output_string,sep=',')[:-1] #removes extra comma introduced in writing csv
-            outvec = np.expand_dims(np.reshape(outarray,(num_steps+1,-1))[1:,:].flatten(),1)
-            state[:,n_idx] = np.concatenate((outvec,parameters)).flatten()
+            try:
+                asynch_dict[n].Prepare_Temp_Files()
+                asynch_dict[n].Advance(True)
+                output_string = asynch_dict[n].Create_Local_Output(None,large_string_len)
+                parameters = np.expand_dims(np.array(asynch_dict[n].Get_Global_Parameters()[0]),1)
+                outarray = np.fromstring(output_string,sep=',')[:-1] #removes extra comma introduced in writing csv
+                outvec = np.expand_dims(np.reshape(outarray,(num_steps+1,-1))[1:,:].flatten(),1)
+                state[:,n_idx] = np.concatenate((outvec,parameters)).flatten()
+            except:
+                print('failed on ' + str(n) +  ', retrying')
+                asynch_dict[n].Prepare_Temp_Files()
+                asynch_dict[n].Advance(True)
+                output_string = asynch_dict[n].Create_Local_Output(None,large_string_len)
+                parameters = np.expand_dims(np.array(asynch_dict[n].Get_Global_Parameters()[0]),1)
+                outarray = np.fromstring(output_string,sep=',')[:-1] #removes extra comma introduced in writing csv
+                outvec = np.expand_dims(np.reshape(outarray,(num_steps+1,-1))[1:,:].flatten(),1)
+                state[:,n_idx] = np.concatenate((outvec,parameters)).flatten() 
+    
     sendvbuf = state.T.flatten()
     recvbuf = cfull.gather(sendvbuf, root=0)
+    i += 1
     if my_rank == 0:
         state_full_flatten = np.array(recvbuf).flatten()
         state_full = np.zeros((state.shape[0],my_ens_num*nproc))
@@ -137,7 +147,6 @@ while current_time<time_stop:
         for pert in asynch_data['param_perturb_type']:
             state_full[-num_param:,:] = pert.perturb(state_full[-num_param:,:])
 
-        i += 1
         if i == 1: 
             current_time += time_step*60*num_steps 
             time = [current_time - ((num_steps-1)-tt)*60*time_step for tt in range(num_steps)]
@@ -159,7 +168,6 @@ while current_time<time_stop:
     if my_rank == 0:
         state_full = np.concatenate((state_full,np.zeros((state_full.shape[0],my_ens_num*nproc-ens_num))),axis=1)
         sendvbuf = state_full.T.flatten() 
-        import pdb; pdb.set_trace()
     cfull.Scatter(sendvbuf, recvbuf, root=0)
     state = np.reshape(recvbuf,(-1,my_ens_num),order='f')
     state_last = state[-(num_param+link_num*link_var_num):,:]

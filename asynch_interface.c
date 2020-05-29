@@ -18,7 +18,6 @@ asynchsolver* Asynch_Init(MPI_Comm comm,int* argc,char** argv[])
 	np = asynch->np;
 	my_rank = asynch->my_rank;
 
-        printf("%d\n",np);
 	//Initialize asynchsolver members
 	asynch->outputfile = NULL;
 	asynch->getting = NULL;

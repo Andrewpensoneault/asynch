@@ -416,4 +416,8 @@ class asynchsolver:
 		self.lib.Asynch_Set_Size_Local_OutputUser_Data.restype = None
 		self.lib.Asynch_Set_Size_Local_OutputUser_Data(self.asynch_obj,location,size)
 
-
+#class Assim:
+#    def __init__(self,filename):
+#        self.asynch_data = self.get_asynch_params(filename)
+#        self.asynch_dict = self.create_asynch_dict()
+#        self.init_cond = self.make_init_cond()

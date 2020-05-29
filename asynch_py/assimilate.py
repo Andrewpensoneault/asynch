@@ -6,7 +6,8 @@ class particle():
     def __init__(self,data):
         self.ens_num = data['ens_num']
         if data['likelihood_type'] == 'gaussian':
-            self.likelihood_type = lambda x, y, Rinv, H: np.exp(np.max(np.diag(np.matmul(np.matmul((H(x)-y).transpose(),(Rinv/2)),(H(x)-y))))-np.diag(np.matmul(np.matmul((H(x)-y).transpose(),(Rinv/2)),(H(x)-y))))
+            neglog = lambda x,y,Rinv,H: np.diag(np.matmul(np.matmul((H(x)-y).transpose(),Rinv/2),(H(x)-y)))
+            self.likelihood_type = lambda x, y, Rinv, H: np.exp(np.min(neglog(x,y,Rinv,H))-neglog(x,y,Rinv,H))
         self.eff_sample_threshold = data['eff_samp_threshold']
         process_error(data,'var_roughing_type','var_roughing_type','var_roughing_params')
         process_error(data,'param_roughing_type','param_roughing_type','param_roughing_params')
@@ -35,7 +36,7 @@ class particle():
            resample_dist = spstats.rv_discrete(values=(xk,weight.flatten()))
            choice = resample_dist.rvs(size=self.ens_num)
            state = state[:,choice]
-           weight = (1/self.ens_num)*np.ones((1,self.ens_num))
+           weight = (1./self.ens_num)*np.ones((1,self.ens_num))
            for pert in self.var_roughing_type:
                state[:-param_num,:] = pert.perturb(state[:-param_num,:])
            for pert in self.param_roughing_type:

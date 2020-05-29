@@ -1,5 +1,6 @@
 #Compilers
-PCC = mpicc
+PCC = icc
+
 
 #Basic flags for compiling
 FLAGS = -std=gnu99 -D_FILE_OFFSET_BITS=64

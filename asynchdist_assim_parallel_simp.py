@@ -18,6 +18,19 @@ csmall = cfull.Split(color,key)
 small_rank = csmall.Get_rank()
 
 buffer_size = 100 #size of one sprintf entry for output
+#(nproc, my_rank, csmall, cfull) = Initialize_MPI()
+#asynch_data = Initialize_Ensemble(sys.argv[1])
+#large_string_len = Get_String_Size(buffer_size,asynch_data)
+#cfull.Barrier()
+#tmax, tcurrent = get_time_range(asynch_data)
+#write_gbls(asynch_data)
+#while tcurrent<tmax:
+#    if my_rank == 0:
+#        write_inis(asynch_data)
+#        write_str(asynch_data)
+
+
+
 ## Parse command line arguments
 numargs = len(sys.argv)
 if numargs != 2:

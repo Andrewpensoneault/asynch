@@ -3,6 +3,11 @@ from ctypes import *
 from mpi4py import MPI
 import numpy
 import sys
+from mpi4py import MPI
+import numpy as np
+from asynch_py.io import get_asynch_params, get_forcings, create_output_folders, write_sav, read_ini, create_ini, make_forcing_files, create_gbl, remove_files, write_results, get_ids, create_tmp_folder
+import datetime
+
 
 #ASYNCH_LIBRARY_LOCATION = '/home/ssma/NewAsynchVersion/libs/libasynch_py.so'
 
@@ -416,8 +421,256 @@ class asynchsolver:
 		self.lib.Asynch_Set_Size_Local_OutputUser_Data.restype = None
 		self.lib.Asynch_Set_Size_Local_OutputUser_Data(self.asynch_obj,location,size)
 
-#class Assim:
-#    def __init__(self,filename):
-#        self.asynch_data = self.get_asynch_params(filename)
-#        self.asynch_dict = self.create_asynch_dict()
-#        self.init_cond = self.make_init_cond()
+class Assim:
+    def __init__(self,filename):
+        self.first_time = True
+        self.asynch_data = self.get_asynch_params(filename)
+        self.current_time = self.asynch_data['time_window'][0]
+        (self.full_comm, self.local_comm, self.my_rank, self.nproc, self.my_ens_num, self.ens_list) = self.make_comm()
+        self.asynch_dict = self.make_asynch_dict()
+        self.init_cond, self.init_id_list = self.make_init_cond()
+        self.global_params = self.make_global_params()
+        if self.my_rank == 0:
+            self.forcings = self.get_forcings() 
+
+    def make_comm(self):
+        cfull = MPI.COMM_WORLD
+        nproc = cfull.Get_size()
+        my_rank = cfull.Get_rank()
+        color = my_rank
+        key = 0
+        csmall = cfull.Split(color,key)
+        ens_num = self.asynch_data['assim_params']['ens_num']
+        my_ens_num = int(np.ceil(float(ens_num)/float(nproc)))
+        ens_list = np.array([i for i in range(my_rank*my_ens_num,(my_rank+1)*my_ens_num)])
+        return (cfull, csmall, my_rank, nproc, my_ens_num, ens_list) 
+
+    def make_init_cond(self):
+        (ic,init_id_list) = read_ini(self.asynch_data['init_cond'])
+        init_cond = np.zeros((len(ic),self.my_ens_num))
+        for n in range(self.my_ens_num):
+            init_cond[:,n] = ic 
+        init_cond = self.perturb(init_cond,initial=True,types='var')
+        return init_cond, init_id_list   
+ 
+    def make_global_params(self):
+        num_param = len(self.asynch_data['init_global_params'])
+        global_params = np.zeros((num_param,self.my_ens_num))
+        for n in range(self.my_ens_num):
+            global_params[:,n] = self.asynch_data['init_global_params']
+        global_params = self.perturb(global_params,initial=True,types='params')
+        return global_params
+
+    def make_asynch_dict(self):
+        ens_num = self.asynch_data['assim_params']['ens_num']
+        asynch_dict = {}
+        for n in self.ens_list:
+            if n < ens_num:
+                asynch_dict[n] = asynchsolver(self.local_comm,0)
+        return asynch_dict
+
+    def write_gbl(self):
+        ens_num = self.asynch_data['assim_params']['ens_num']
+        asynch_dict = {}
+        step_size = self.asynch_data['step_size']
+        num_steps = self.asynch_data['num_steps']
+        for n in self.ens_list:
+            if n < ens_num:
+                n_idx = np.nonzero(self.ens_list==n)[0][0]
+                create_gbl(n, self.global_params[:,n_idx], self.asynch_data, self.current_time, step_size, num_steps)
+
+    def get_forcings(self):
+        if self.my_rank == 0:
+            forcing_data = get_forcings(self.asynch_data)
+            return forcing_data
+
+    def write_forcings(self):
+        if self.my_rank == 0:
+            make_forcing_files(self.forcings, self.asynch_data, self.current_time)
+
+    def write_sav(self):
+        if self.my_rank == 0:
+            write_sav(self.asynch_data)
+
+    def write_ini(self):
+        ens_num = self.asynch_data['assim_params']['ens_num']
+        asynch_dict = {}
+        link_var_num = self.asynch_data['link_var_num']
+        for n in self.ens_list:
+            if n < ens_num:
+                n_idx = np.nonzero(self.ens_list==n)[0][0]
+                create_ini(self.asynch_data['tmp_folder']+str(n)+'.ini',self.init_id_list,link_var_num,self.asynch_data['model_num'],self.init_cond[:,n_idx])
+
+    def get_asynch_params(self,filename):
+        asynch_data = get_asynch_params(filename) 
+        asynch_data['id_list'] = get_ids(asynch_data)
+        return asynch_data
+
+    def assimilate(self,state,measure):
+        ens_anal = self.asynch_data['assim'].assimilate(state,self.asynch_data,measure)
+        weights = self.asynch_data['assim'].weights
+        return (ens_anal,weights)
+
+    def get_current_meas(self):
+        if my_rank == 0:
+            id_list = self.asynch_dict['id_list']
+            link_var_num = self.asynch_dict['link_var_num']
+            num_steps = self.asynch_dict['num_steps']
+            step_size = self.asynch_dict['step_size']
+            for dsource in self.asynch_data['measure']:
+                dsource.get_current_meas(self.current_time - (num_steps-1)*step_size*60, id_list, link_var_num, num_steps, step_size)
+
+    def advance(self,buffer_size):
+        ens_num = self.asynch_data['assim_params']['ens_num']
+        num_link = len(self.asynch_data['id_list'])
+        link_var_num = self.asynch_data['link_var_num']
+        num_steps = self.asynch_data['num_steps']
+        num_param = len(self.asynch_data['init_global_params'])
+        state = np.zeros(self.init_cond.shape)
+        state_out = np.zeros((num_link*link_var_num*num_steps+num_param,ens_num))
+        for n in self.ens_list:
+            if n < ens_num:
+                n_idx = np.nonzero(self.ens_list==n)[0][0]
+                if self.first_time == True:
+                    self.asynch_dict[n].Parse_GBL(str(self.asynch_data['tmp_folder'] + str(n) + '.gbl'))
+                    self.asynch_dict[n].Load_Network()
+                    self.asynch_dict[n].Partition_Network()
+                    self.asynch_dict[n].Load_Network_Parameters(False)
+                    self.asynch_dict[n].Load_Dams()
+                    self.asynch_dict[n].Load_Numerical_Error_Data()
+                    self.asynch_dict[n].Initialize_Model()
+                    self.asynch_dict[n].Load_Save_Lists()
+                    self.asynch_dict[n].Load_Initial_Conditions()
+                else:
+                    init_next = self.init_cond 
+                    param_next = self.global_params
+                    link_var_num = self.asynch_data['link_var_num']
+                    init = [[init_next[k+j*link_var_num,n_idx] for k in range(link_var_num)] for j in range(num_link)]
+                    self.asynch_dict[n].Set_System_State(0,init)
+                    self.asynch_dict[n].Set_Global_Parameters(param_next[:,n_idx].tolist()) 
+            self.asynch_dict[n].Load_Forcings()
+            self.asynch_dict[n].Finalize_Network()
+            self.asynch_dict[n].Calculate_Step_Sizes()
+            self.asynch_dict[n].Prepare_Output()
+            self.asynch_dict[n].Prepare_Temp_Files()
+            self.asynch_dict[n].Advance(True)
+            output_string = self.asynch_dict[n].Create_Local_Output(None,buffer_size)
+            parameters = np.expand_dims(np.array(self.asynch_dict[n].Get_Global_Parameters()[0]),1)
+            outarray = np.fromstring(output_string,sep=',')[:-1] #removes extra comma introduced in writing csv
+            if len(outarray) == (num_steps+1)*link_var_num*num_link:
+                outvec = np.reshape(outarray,(num_steps+1,-1))
+                outvec = outvec[1:,:].flatten()
+            elif len(outarray) == (num_steps)*link_var_num*num_link:
+                outvec = np.reshape(outarray,(num_steps,-1)).flatten()
+            else:
+                raise ValueError('Incorrect size of output')
+            outvec = np.expand_dims(outvec,1)
+            outvec = self.perturb(outvec,types='var')
+            parameters = self.perturb(parameters,types='params')
+            state_out[:,n_idx] = np.concatenate((outvec,parameters)).flatten()
+        self.advance_time()
+        return state_out
+
+    def gather_outputs(self,state):
+        ens_num = self.asynch_data['assim_params']['ens_num']
+        sendvbuf = state.T.flatten()
+        recvbuf = self.full_comm.gather(sendvbuf, root=0)
+	if self.my_rank == 0:
+            state_full_flatten = np.array(recvbuf).flatten()
+            state_full = np.zeros((state.shape[0],self.my_ens_num*self.nproc))
+            for num in range(self.my_ens_num*self.nproc):
+                state_full[:,num] = state_full_flatten[num*state.shape[0]:(num+1)*state.shape[0]]
+            state_full = state_full[:,0:ens_num]
+            return state_full
+        else:
+            return None
+          
+    def scatter_outputs(self,sendvbuf):
+        num_param = len(self.asynch_data['init_global_params']) 
+        link_var_num = self.asynch_data['link_var_num']
+        link_num = len(self.asynch_data['id_list'])
+        num_steps = self.asynch_data['num_steps']
+        ens_num = self.asynch_data['assim_params']['ens_num']
+        recvbuf = np.empty((self.my_ens_num*(num_param+link_var_num*link_num*num_steps)))
+        if self.my_rank == 0:
+            state_full = np.concatenate((sendvbuf,np.zeros((sendvbuf.shape[0],self.my_ens_num*self.nproc-ens_num))),axis=1)
+            sendvbuf = state_full.T.flatten()
+        self.full_comm.Scatter(sendvbuf, recvbuf, root=0)
+        state = np.reshape(recvbuf,(-1,self.my_ens_num),order='f')
+        state_last = state[-(num_param+link_num*link_var_num):,:]
+        return state_last
+
+    def perturb(self,state,initial=False,types='var'):
+        if types == 'var':
+            plist = self.asynch_data['var_perturb_type']
+        elif types ==  'params':
+            plist = self.asynch_data['param_perturb_type']
+        else:
+            raise TypeError('Invalid perturb type')
+        for pert in plist:
+            if initial==True:
+                state = pert.init_perturb(state)
+            elif initial==False:
+                state = pert.perturb(state)
+        return state
+        
+    def set_global_vars(self):
+        ens_num = self.asynch_data['assim_params']['ens_num']
+        for n in self.ens_list:
+            if n < ens_num:
+                n_idx = np.nonzero(self.ens_list==n)[0][0]
+                self.asynch_dict[n].Set_Global_Parameters(self.global_params[:,n].flatten().tolist())
+
+    def advance_time(self):
+        step_size = self.asynch_data['step_size']
+        num_steps = self.asynch_data['num_steps']
+        if self.first_time == True:
+            self.current_time += 60*step_size*num_steps
+        else:
+            self.current_time += 60*step_size
+
+    def write_outputs(self,state,weights):
+        if self.my_rank == 0:
+            step_size = self.asynch_data['step_size']
+            num_steps = self.asynch_data['num_steps']
+            link_var_num = self.asynch_data['link_var_num']
+            id_list = self.asynch_data['id_list']
+            num_links = len(id_list)
+            num_param = len(self.asynch_data['init_global_params'])
+            if self.first_time == True:
+                self.first_time = False
+                time = [self.current_time - ((num_steps-1)-tt)*60*step_size for tt in range(num_steps)]
+                data = state
+            else:
+                time = [self.current_time]
+                data = state[-(num_param+num_links*link_var_num):-num_param,:]
+            write_results(data,id_list,link_var_num,time,self.asynch_data,weights)
+
+
+    def get_current_meas(self):
+        if self.my_rank == 0:
+            num_steps = self.asynch_data['num_steps']
+            step_size = self.asynch_data['step_size']
+            id_list = self.asynch_data['id_list']
+            link_var_num = self.asynch_data['link_var_num']
+            start_time = self.current_time-60*step_size*(num_steps-1)
+            for dsource in self.asynch_data['measure']:
+                dsource.get_current_meas(start_time, id_list, link_var_num, num_steps, step_size)
+
+    def get_meas(self):
+        if self.my_rank == 0:
+            for dsource in self.asynch_data['measure']:
+                dsource.get_meas(self.asynch_data['time_window']) 
+
+    def create_output_folders(self):
+        if self.my_rank == 0:
+            create_output_folders(self.asynch_data)
+
+    def create_tmp_folders(self):
+        ens_num = self.asynch_data['assim_params']['ens_num']
+        for n in self.ens_list:
+            if n < ens_num:
+                create_tmp_folder(self.asynch_data,n)
+
+    def remove_files(self):
+        remove_files(self.asynch_data['tmp_folder'])

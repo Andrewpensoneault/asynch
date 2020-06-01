@@ -22,12 +22,18 @@ def create_output_folders(data):
     except OSError:
         if not os.path.isdir(data['tmp_folder']):
             raise
+        else:
+            rmtree(data['tmp_folder'])
+            os.makedirs(data['tmp_folder'])
 
     try:
         os.makedirs(output_folder)
     except OSError:
         if not os.path.isdir(output_folder):
             raise
+        else:
+            rmtree(output_folder)
+            os.makedirs(output_folder)
 
     try:
         os.makedirs(output_folder + 'model')

@@ -79,6 +79,7 @@ int Asynch_Custom_Model(asynchsolver* asynch,void (*SetParamSizes)(UnivVars*,voi
 	void (*Precalculations)(Link*,VEC*,VEC*,unsigned int,unsigned int,unsigned short int,unsigned int,void*),int (*InitializeEqs)(VEC*,VEC*,QVSData*,unsigned short int,VEC*,unsigned int,unsigned int,unsigned int,void*,void*));
 int Asynch_Custom_Partitioning(asynchsolver* asynch,int* (*Partition_Routine)(Link**,unsigned int,Link**,unsigned int,unsigned int**,unsigned int*,TransData*,short int*));
 void Asynch_Free(asynchsolver* asynch);
+void Asynch_Refresh_Forcings(asynchsolver* asynch);
 
 //Routines to intialize network and model
 void Asynch_Parse_GBL(asynchsolver* asynch,char* gbl_filename);
@@ -107,6 +108,7 @@ void Asynch_Prepare_Temp_Files(asynchsolver* asynch);
 void Asynch_Prepare_Peakflow_Output(asynchsolver* asynch);
 int Asynch_Create_Output(asynchsolver* asynch,char* additional_out);
 char* Asynch_Create_Local_Output(asynchsolver* asynch,char* additional_out, int output_string_size);
+void Asynch_Free_Local_Output(char *ptr);
 int Asynch_Create_Peakflows_Output(asynchsolver* asynch);
 int Asynch_Delete_Temporary_Files(asynchsolver* asynch);
 int Asynch_Write_Current_Step(asynchsolver* asynch);

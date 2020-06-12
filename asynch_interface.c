@@ -261,6 +261,7 @@ void Asynch_Load_Initial_Conditions(asynchsolver* asynch)
 void Asynch_Load_Forcings(asynchsolver* asynch)
 {
 	int i;
+
 	if(!asynch->setup_partition)
 	{
 		if(my_rank == 0)
@@ -428,13 +429,25 @@ void Asynch_Free(asynchsolver* asynch)
 	if(asynch->custom_model)	free(asynch->custom_model);
 
 	//Finalize MPI
-	if(asynch->mpi_initialized)
-	{
-		MPI_Finalized(&finalized_flag);
-		if(!finalized_flag)	MPI_Finalize();
-	}
-
+//	if(asynch->mpi_initialized)
+//	{
+//		MPI_Finalized(&finalized_flag);
+//		if(!finalized_flag)	MPI_Finalize();
+//	}
+//
 	free(asynch);
+}
+
+void Asynch_Refresh_Forcings(asynchsolver* asynch)
+{
+	int i;
+
+	for(i=0;i<ASYNCH_MAX_DB_CONNECTIONS - ASYNCH_DB_LOC_FORCING_START;i++)	
+        {
+           FreeForcing(&(asynch->forcings[i]));
+	   asynch->forcings[i] = InitializeForcings();
+           // RefreshForcing(&(asynch->forcings[i]));
+        }
 }
 
 
@@ -644,12 +657,20 @@ char* Asynch_Create_Local_Output(asynchsolver* asynch,char* additional_out, int 
 	//Flush the transfer buffers
 	//!!!! I'm really not sure if this should be here. Seems like either the sends in processdata should use a different tag, or
 	// the flush should unpack data instead of trashing it and be put in the Asynch_Advance function call. !!!!
-        char* textof = (char*) calloc(output_string_size,sizeof(char));
+        char* textof = (char*) calloc(output_string_size,sizeof(char)); 
+        
         int flagof; 
         Flush_TransData(asynch->my_data,asynch->comm);
 	flagof = Interpret_Data(asynch->sys,asynch->GlobalVars,asynch->N,asynch->save_list,asynch->save_size,asynch->my_save_size,asynch->id_to_loc,asynch->assignments,NULL,additional_out,asynch->db_connections[ASYNCH_DB_LOC_HYDRO_OUTPUT],&(asynch->outputfile),textof,asynch->comm);
 	return textof;
 }
+
+
+void Asynch_Free_Local_Output(char *ptr)
+{
+    free(ptr);
+}
+
 
 
 

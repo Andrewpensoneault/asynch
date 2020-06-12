@@ -6,8 +6,10 @@ import sys
 from mpi4py import MPI
 import numpy as np
 from asynch_py.io import get_asynch_params, get_forcings, create_output_folders, write_sav, read_ini, create_ini, make_forcing_files, create_gbl, remove_files, write_results, get_ids, create_tmp_folder
+from asynch_py.perturb import fix_states
 import datetime
-
+import psutil
+import os
 
 #ASYNCH_LIBRARY_LOCATION = '/home/ssma/NewAsynchVersion/libs/libasynch_py.so'
 
@@ -154,6 +156,7 @@ class asynchsolver:
 		self.lib.Asynch_Finalize_Network.restype = None
 		self.lib.Asynch_Calculate_Step_Sizes.restype = None
 		self.lib.Asynch_Free.restype = None
+		self.lib.Asynch_Refresh_Forcings.restype = None
 		self.lib.Asynch_Advance.restype = None
 		self.lib.Asynch_Prepare_Output.restype = None
 		self.lib.Asynch_Prepare_Temp_Files.restype = None
@@ -176,7 +179,8 @@ class asynchsolver:
 		self.lib.Asynch_Copy_Local_OutputUser_Data.restype = None
 		self.lib.Asynch_Set_Size_Local_OutputUser_Data.restype = None
 	 	self.lib.Asynch_Get_Size_Global_Parameters.restype = c_uint
-         	self.lib.Asynch_Create_Local_Output.restype = c_char_p
+         	self.lib.Asynch_Create_Local_Output.restype = c_void_p
+                self.lib.Asynch_Free_Local_Output.restype = None
 
 		#Functions created specifically for the Python interface
 		self.lib.C_inc_ref.restype = None
@@ -224,6 +228,9 @@ class asynchsolver:
 
 	def Load_Forcings(self):
 		self.lib.Asynch_Load_Forcings(self.asynch_obj)
+	
+        def Refresh_Forcings(self):
+		self.lib.Asynch_Refresh_Forcings(self.asynch_obj)
 
 	def Load_Dams(self):
 		self.lib.Asynch_Load_Dams(self.asynch_obj)
@@ -268,6 +275,9 @@ class asynchsolver:
 	
 	def Create_Local_Output(self,additional_out,str_length):
 		return self.lib.Asynch_Create_Local_Output(self.asynch_obj,additional_out,str_length)
+	
+        def Free_Local_Output(self,ptr):
+		return self.lib.Asynch_Free_Local_Output(ptr)
 
 	def Create_Peakflows_Output(self):
 		return self.lib.Asynch_Create_Peakflows_Output(self.asynch_obj)
@@ -430,6 +440,10 @@ class Assim:
         self.asynch_dict = self.make_asynch_dict()
         self.init_cond, self.init_id_list = self.make_init_cond()
         self.global_params = self.make_global_params()
+        self.link_vars = len(self.asynch_data['id_list'])*self.asynch_data['link_var_num']
+        self.num_steps = self.asynch_data['num_steps']
+        self.restart_time = 0
+        self.max_restart_time = 100
         if self.my_rank == 0:
             self.forcings = self.get_forcings() 
 
@@ -460,6 +474,12 @@ class Assim:
             global_params[:,n] = self.asynch_data['init_global_params']
         global_params = self.perturb(global_params,initial=True,types='params')
         return global_params
+
+    def free_asynch_dict(self):
+        ens_num = self.asynch_data['assim_params']['ens_num']
+        for n in self.ens_list:
+            if n < ens_num:
+                del self.asynch_dict[n]
 
     def make_asynch_dict(self):
         ens_num = self.asynch_data['assim_params']['ens_num']
@@ -509,7 +529,15 @@ class Assim:
     def assimilate(self,state,measure):
         ens_anal = self.asynch_data['assim'].assimilate(state,self.asynch_data,measure)
         weights = self.asynch_data['assim'].weights
+        state = ens_anal[:-len(self.asynch_data['init_global_params']),:]
+        params = ens_anal[-len(self.asynch_data['init_global_params']):,:]
+        (state,params) = self.fix_states(state,params)
+        ens_anal = np.vstack((state,params))
         return (ens_anal,weights)
+
+    def fix_states(self,state,params):
+        (state,params) = fix_states(self.asynch_data,state,params)
+        return (state,params)
 
     def get_current_meas(self):
         if my_rank == 0:
@@ -527,7 +555,11 @@ class Assim:
         num_steps = self.asynch_data['num_steps']
         num_param = len(self.asynch_data['init_global_params'])
         state = np.zeros(self.init_cond.shape)
-        state_out = np.zeros((num_link*link_var_num*num_steps+num_param,ens_num))
+        state_out = np.zeros((num_link*link_var_num*num_steps+num_param,self.my_ens_num))
+        self.restart_time = np.mod(self.restart_time+1,self.max_restart_time)
+        if np.logical_and(self.restart_time == 0,self.first_time != True):
+            self.free_asynch_dict()
+            self.asynch_dict = self.make_asynch_dict()
         for n in self.ens_list:
             if n < ens_num:
                 n_idx = np.nonzero(self.ens_list==n)[0][0]
@@ -541,6 +573,32 @@ class Assim:
                     self.asynch_dict[n].Initialize_Model()
                     self.asynch_dict[n].Load_Save_Lists()
                     self.asynch_dict[n].Load_Initial_Conditions()
+                    self.asynch_dict[n].Load_Forcings()
+                    self.asynch_dict[n].Finalize_Network()
+                    self.asynch_dict[n].Calculate_Step_Sizes()
+                    self.asynch_dict[n].Prepare_Output()
+                    self.asynch_dict[n].Prepare_Temp_Files()
+                elif self.restart_time == 0:
+                    self.asynch_dict[n].Parse_GBL(str(self.asynch_data['tmp_folder'] + str(n) + '.gbl'))
+                    self.asynch_dict[n].Load_Network()
+                    self.asynch_dict[n].Partition_Network()
+                    self.asynch_dict[n].Load_Network_Parameters(False)
+                    self.asynch_dict[n].Load_Dams()
+                    self.asynch_dict[n].Load_Numerical_Error_Data()
+                    self.asynch_dict[n].Initialize_Model()
+                    self.asynch_dict[n].Load_Save_Lists()
+                    self.asynch_dict[n].Load_Initial_Conditions()
+                    self.asynch_dict[n].Load_Forcings()
+                    self.asynch_dict[n].Finalize_Network()
+                    self.asynch_dict[n].Calculate_Step_Sizes()
+                    self.asynch_dict[n].Prepare_Output()
+                    self.asynch_dict[n].Prepare_Temp_Files()
+                    init_next = self.init_cond 
+                    param_next = self.global_params
+                    link_var_num = self.asynch_data['link_var_num']
+                    init = [[init_next[k+j*link_var_num,n_idx] for k in range(link_var_num)] for j in range(num_link)]
+                    self.asynch_dict[n].Set_System_State(0,init)
+                    self.asynch_dict[n].Set_Global_Parameters(param_next[:,n_idx].tolist()) 
                 else:
                     init_next = self.init_cond 
                     param_next = self.global_params
@@ -548,33 +606,36 @@ class Assim:
                     init = [[init_next[k+j*link_var_num,n_idx] for k in range(link_var_num)] for j in range(num_link)]
                     self.asynch_dict[n].Set_System_State(0,init)
                     self.asynch_dict[n].Set_Global_Parameters(param_next[:,n_idx].tolist()) 
-            self.asynch_dict[n].Load_Forcings()
-            self.asynch_dict[n].Finalize_Network()
-            self.asynch_dict[n].Calculate_Step_Sizes()
-            self.asynch_dict[n].Prepare_Output()
-            self.asynch_dict[n].Prepare_Temp_Files()
-            self.asynch_dict[n].Advance(True)
-            output_string = self.asynch_dict[n].Create_Local_Output(None,buffer_size)
-            parameters = np.expand_dims(np.array(self.asynch_dict[n].Get_Global_Parameters()[0]),1)
-            outarray = np.fromstring(output_string,sep=',')[:-1] #removes extra comma introduced in writing csv
-            if len(outarray) == (num_steps+1)*link_var_num*num_link:
-                outvec = np.reshape(outarray,(num_steps+1,-1))
-                outvec = outvec[1:,:].flatten()
-            elif len(outarray) == (num_steps)*link_var_num*num_link:
-                outvec = np.reshape(outarray,(num_steps,-1)).flatten()
-            else:
-                raise ValueError('Incorrect size of output')
-            outvec = np.expand_dims(outvec,1)
-            outvec = self.perturb(outvec,types='var')
-            parameters = self.perturb(parameters,types='params')
-            state_out[:,n_idx] = np.concatenate((outvec,parameters)).flatten()
+                self.asynch_dict[n].Advance(True)
+                ptr = self.asynch_dict[n].Create_Local_Output(None,buffer_size)
+                output_string = cast(ptr,c_char_p).value
+                self.asynch_dict[n].Free_Local_Output(cast(ptr,c_char_p))
+                self.asynch_dict[n].Free_OutputUser_Data()
+                parameters = np.expand_dims(np.array(self.asynch_dict[n].Get_Global_Parameters()[0]),1)
+                outarray = np.fromstring(output_string,sep=',')[:-1] #removes extra comma introduced in writing csv
+                if len(outarray) == (num_steps+1)*link_var_num*num_link:
+                    outvec = np.reshape(outarray,(num_steps+1,-1))
+                    outvec = outvec[1:,:].flatten()
+                elif len(outarray) == (num_steps)*link_var_num*num_link:
+                    outvec = np.reshape(outarray,(num_steps,-1)).flatten()
+                else:
+                    raise ValueError('Incorrect size of output, size='+str(len(outarray)))
+                outvec = np.expand_dims(outvec,1)
+                outvec = self.perturb(outvec,types='var')
+                parameters = self.perturb(parameters,types='params')
+                state_out[:,n_idx] = np.concatenate((outvec,parameters)).flatten()
+                self.asynch_dict[n].Free_OutputUser_Data()
         self.advance_time()
         return state_out
 
     def gather_outputs(self,state):
         ens_num = self.asynch_data['assim_params']['ens_num']
-        sendvbuf = state.T.flatten()
-        recvbuf = self.full_comm.gather(sendvbuf, root=0)
+        sendvbuf = state.T.flatten().astype('f')
+        if self.my_rank == 0:
+            recvbuf = np.empty([self.nproc,sendvbuf.shape[0]],dtype='f')
+        else:
+            recvbuf = None
+        self.full_comm.Gather(sendvbuf, recvbuf, root=0)
 	if self.my_rank == 0:
             state_full_flatten = np.array(recvbuf).flatten()
             state_full = np.zeros((state.shape[0],self.my_ens_num*self.nproc))
@@ -597,8 +658,7 @@ class Assim:
             sendvbuf = state_full.T.flatten()
         self.full_comm.Scatter(sendvbuf, recvbuf, root=0)
         state = np.reshape(recvbuf,(-1,self.my_ens_num),order='f')
-        state_last = state[-(num_param+link_num*link_var_num):,:]
-        return state_last
+        return state
 
     def perturb(self,state,initial=False,types='var'):
         if types == 'var':
@@ -673,4 +733,7 @@ class Assim:
                 create_tmp_folder(self.asynch_data,n)
 
     def remove_files(self):
-        remove_files(self.asynch_data['tmp_folder'])
+        for s in self.ens_list:
+            self.asynch_dict[s].Delete_Temporary_Files()
+        if self.my_rank == 0:
+            remove_files(self.asynch_data['tmp_folder'])

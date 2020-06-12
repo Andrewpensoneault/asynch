@@ -39,6 +39,61 @@ void FreeForcing(Forcing** forcings)
 	}
 }
 
+/*void RefreshForcing(Forcing** forcings)
+{
+        int i=0;
+        int string_size = 256;
+        int flag;
+        char tmp_filename[256];
+        char tmp_lookup_filename[256];  
+        int tmp_inf;
+        int tmp_inlf;
+
+        if((*forcings)->filename)	
+        {
+            strcpy(tmp_filename, (*forcings)->filename);
+            tmp_inf=0;
+        }
+        else
+        {
+            tmp_inf=1;
+        }
+        if((*forcings)->lookup_filename)	
+        {
+           strcpy(tmp_lookup_filename, (*forcings)->lookup_filename);
+           tmp_inlf=0;
+        }
+        else
+        {
+           tmp_inlf=1;
+        }
+        flag = (*forcings)->flag;
+
+        FreeForcing(forcings);
+        Forcing* tmp_forcings = InitializeForcings();
+        tmp_forcings->filename = (char*) malloc(string_size*sizeof(char));
+        tmp_forcings->lookup_filename = (char*) malloc(string_size*sizeof(char));
+        
+        if(tmp_inf==0)
+        {
+            strcpy(tmp_forcings->filename, tmp_filename);
+        }
+        else
+        {
+            tmp_forcings->filename = NULL;
+        }
+        if(tmp_inlf==0)
+        {
+           strcpy(tmp_forcings->lookup_filename, tmp_lookup_filename);
+        }
+        else
+        {
+            tmp_forcings->lookup_filename = NULL;
+        }
+        tmp_forcings->flag = flag;
+        forcings = &tmp_forcings;
+}
+*/
 //GetPasses ************************************************************************************
 //Forcings (0 = none, 1 = .str, 2 = binary, 3 = database, 4 = .ustr, 5 = forcasting, 6 = .gz binary, 7 = recurring)
 

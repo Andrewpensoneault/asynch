@@ -1,9 +1,9 @@
 #Compilers
-PCC = icc
+PCC = mpicc
 
 
 #Basic flags for compiling
-FLAGS = -std=gnu99 -D_FILE_OFFSET_BITS=64
+FLAGS = -std=gnu99 -D_FILE_OFFSET_BITS=64 -g
 
 #Flags for performance
 OPTFLAGS = -O3 -march=nocona

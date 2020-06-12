@@ -1302,7 +1302,7 @@ int Load_Forcings(Link** system,unsigned int N,unsigned int* my_sys,unsigned int
 	double *buffer = NULL,univ_forcing_change_time[GlobalVars->num_forcings];
 	PGresult *res;
 	Link* current;
-
+        
 	//Reserve space for forcing data
 	for(i=0;i<my_N;i++)
 	{
@@ -1319,7 +1319,6 @@ int Load_Forcings(Link** system,unsigned int N,unsigned int* my_sys,unsigned int
 		forcings[l]->maxtime = GlobalVars->t_0;
 		forcings[l]->iteration = 0;
 		forcings[l]->active = 1;
-
 		//Go through each possible flag
 		if(forcings[l]->flag == 0)	//0 forcing
 		{

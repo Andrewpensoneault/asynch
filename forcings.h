@@ -12,6 +12,7 @@ extern int my_rank;
 
 Forcing* InitializeForcings();
 void FreeForcing(Forcing** forcings);
+void RefreshForcing(Forcing** forcings);
 
 unsigned int PassesOther(Forcing* forcing,double maxtime,ConnData* conninfo);
 unsigned int PassesBinaryFiles(Forcing* forcing,double maxtime,ConnData* conninfo);

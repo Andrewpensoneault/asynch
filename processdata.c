@@ -659,7 +659,7 @@ int Process_Data(Link** sys,UnivVars* GlobalVars,unsigned int N,unsigned int* sa
 	MPI_Barrier(comm);
 
 	//Reopen the tempfile
-	if(my_tempfile && my_save_size > 0)
+/*	if(my_tempfile && my_save_size > 0)
 	{
 		if(additional_temp != NULL)
 			sprintf(filename,"%s_%s",GlobalVars->temp_filename,additional_temp);
@@ -669,7 +669,7 @@ int Process_Data(Link** sys,UnivVars* GlobalVars,unsigned int N,unsigned int* sa
 		if(!*my_tempfile)
 			printf("[%i]: Error reopening temp file %s.\n",my_rank,filename);
 	}
-
+*/
 	return 0;
 }
 

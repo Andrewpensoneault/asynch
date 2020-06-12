@@ -1,4 +1,25 @@
 import numpy as np
+
+
+def fix_states(asynch_data,state,params):
+    lower_bounds_var = np.array([asynch_data['bounds_var'][i][0] for i in range(len(asynch_data['bounds_var']))])
+    upper_bounds_var = np.array([asynch_data['bounds_var'][i][1] for i in range(len(asynch_data['bounds_var']))])
+     
+    lower_bounds_param = np.array([asynch_data['bounds_params'][i][0] for i in range(len(asynch_data['bounds_params']))])
+    upper_bounds_param = np.array([asynch_data['bounds_params'][i][1] for i in range(len(asynch_data['bounds_params']))])
+
+    num_var = len(lower_bounds_var)   
+    num_param = len(lower_bounds_param)   
+
+    for i in range(num_var):
+        state[i::num_var,:] = np.minimum(np.maximum(state[i::num_var,:],lower_bounds_var[i]),upper_bounds_param[i])
+
+    for i in range(num_param):
+        params[i,:] = np.minimum(np.maximum(params[i,:],lower_bounds_param[i]),upper_bounds_param[i])
+
+    return (state,params)
+
+
 class absolute():
     def __init__(self,data):
         self.error = data['absolute_error']

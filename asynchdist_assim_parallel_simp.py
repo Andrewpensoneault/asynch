@@ -16,8 +16,9 @@ param_num = len(assim.asynch_data['init_global_params'])
 buffer_size = 20*assim.asynch_data['num_steps']*assim.asynch_data['link_var_num']*len(assim.asynch_data['id_list'])
 
 #Create Initial Files
-assim.create_tmp_folders()
 assim.create_output_folders()
+assim.full_comm.Barrier()
+assim.create_tmp_folders()
 assim.full_comm.Barrier()
 assim.write_sav()
 assim.write_ini()
@@ -42,8 +43,14 @@ while assim.current_time < assim.asynch_data['time_window'][1]:
         assim.get_current_meas()
         (state_full,weights) = assim.assimilate(state_full, assim.asynch_data['measure'])
         assim.write_outputs(state_full,weights)
+        print('q value: ' + str(np.mean(state_full[0:-param_num:assim.asynch_data['link_var_num'],:])))
+        print('sp value: ' + str(np.mean(state_full[1:-param_num:assim.asynch_data['link_var_num'],:])))
+        print('st value: ' + str(np.mean(state_full[2:-param_num:assim.asynch_data['link_var_num'],:])))
+        print('ss value: ' + str(np.mean(state_full[3:-param_num:assim.asynch_data['link_var_num'],:])))
+        print('max params: ' + str(np.amax(state_full[-param_num:,:],axis=1)))
+        print('min params: ' + str(np.amin(state_full[-param_num:,:],axis=1)))
     state = assim.scatter_outputs(state_full)
-    assim.init_cond = state[:-param_num,:]
+    assim.init_cond = state[(-param_num-(assim.num_steps)*assim.link_vars):(-param_num-(assim.num_steps-1)*assim.link_vars),:]
     assim.global_param = state[-param_num:,:]
-if assim.my_rank == 0:
-    remove_files(asynch_data['tmp_folder'])
+    assim.first_time = False
+assim.remove_files()

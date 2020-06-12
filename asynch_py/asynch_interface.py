@@ -415,3 +415,40 @@ class asynchsolver:
 		self.lib.Asynch_Set_Size_Local_OutputUser_Data(self.asynch_obj,location,size)
 
 
+class Assim:
+    def __init__(self,filename):
+        self.first_time = True
+        self.asynch_data = self.get_asynch_params(filename)
+        self.current_time = self.asynch_data['time_window'][0]
+        self.asynch_dict = self.make_asynch_dict()
+        self.init_cond, self.init_id_list = self.make_init_cond()
+        self.global_params = self.make_global_params()
+        self.link_vars = len(self.asynch_data['id_list'])*self.asynch_data['link_var_num']
+        self.num_steps = self.asynch_data['num_steps']
+        if self.my_rank == 0:
+            self.forcings = self.get_forcings() 
+
+    def make_init_cond(self):
+        (ic,init_id_list) = read_ini(self.asynch_data['init_cond'])
+        init_cond = np.zeros((len(ic),self.my_ens_num))
+        for n in range(self.my_ens_num):
+            init_cond[:,n] = ic 
+        init_cond = self.perturb(init_cond,initial=True,types='var')
+        return init_cond, init_id_list   
+ 
+    def make_global_params(self):
+        num_param = len(self.asynch_data['init_global_params'])
+        global_params = np.zeros((num_param,self.my_ens_num))
+        for n in range(self.my_ens_num):
+            global_params[:,n] = self.asynch_data['init_global_params']
+        global_params = self.perturb(global_params,initial=True,types='params')
+        return global_params
+
+    def make_asynch_dict(self):
+        ens_num = self.asynch_data['assim_params']['ens_num']
+        asynch_dict = {}
+        for n in self.ens_list:
+            if n < ens_num:
+                asynch_dict[n] = asynchsolver(self.local_comm,0)
+        return asynch_dict
+

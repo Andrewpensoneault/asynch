@@ -297,7 +297,11 @@ def write_results(data, link_ids, link_var_num, times, asynch_data, weight=None)
     
     model_folder = asynch_data['output_folder'] + 'model/'
     write_ids = asynch_data['write_ids']
-    
+    param_ids = asynch_data['param_ids']
+
+    if len(param_ids)!=len(asynch_data['init_global_params']):
+        raise ValueError('There must be an id for each global variable') 
+ 
     times = np.expand_dims([datetime.datetime.utcfromtimestamp(t).strftime('%Y-%m-%d %H:%M:%S') for t in times],axis=1)
     
     for ids in write_ids:
@@ -342,5 +346,45 @@ def write_results(data, link_ids, link_var_num, times, asynch_data, weight=None)
                     np.savetxt(f,TITLES, fmt="%s,%s", delimiter=",")
             with open(m_filename,'a') as f:
                 np.savetxt(f, m_out, fmt="%s,%s", delimiter=",")
-     
+    for loc,ids in enumerate(param_ids,0):
+        p_filename = model_folder + '/' + str(ids) + '_p.csv'
+        n_filename = model_folder + '/' + str(ids) + '.csv'
+        m_filename = model_folder + '/' + str(ids) + '_m.csv'
+        
+        id_idx = -len(asynch_data['init_global_params'])+loc
+        for t in range(len(times)):
+            idx = id_idx
+            mean_current = mean[idx]
+            std_current = std[idx]
+            
+            p_out = np.expand_dims(['%.4f' % (mean_current + std_current)],axis=1)
+            out = np.expand_dims(['%.4f' % (mean_current)],axis=1)
+            m_out = np.expand_dims(['%.4f' %  np.maximum(mean_current - std_current,0)],axis=1)
 
+            p_out = np.hstack((np.expand_dims(times[t],1),p_out))
+            out = np.hstack((np.expand_dims(times[t],1),out))
+            m_out = np.hstack((np.expand_dims(times[t],1),m_out))
+
+            try:
+                os.stat(p_filename)
+            except OSError:
+                with open(p_filename,'a') as f:
+                    np.savetxt(f,TITLES, fmt="%s,%s", delimiter=",")
+            with open(p_filename,'a') as f:
+                np.savetxt(f, p_out, fmt="%s,%s", delimiter=",")
+
+            try:
+                os.stat(n_filename)
+            except OSError:
+                with open(n_filename,'a') as f:
+                    np.savetxt(f,TITLES, fmt="%s,%s", delimiter=",")
+            with open(n_filename,'a') as f:
+                np.savetxt(f, out, fmt="%s,%s", delimiter=",")
+
+            try:
+                os.stat(m_filename)
+            except OSError:
+                with open(m_filename,'a') as f:
+                    np.savetxt(f,TITLES, fmt="%s,%s", delimiter=",")
+            with open(m_filename,'a') as f:
+                np.savetxt(f, m_out, fmt="%s,%s", delimiter=",")

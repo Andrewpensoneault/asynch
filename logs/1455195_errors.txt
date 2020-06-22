@@ -1,0 +1,200 @@
+
+The following have been reloaded with a version change:
+  1) python/2.7.14_openmpi-2.0.1 => python/3.7.0
+
+
+The following have been reloaded with a version change:
+  1) zlib/1.2.11 => zlib/1.2.11_parallel_studio-2017.1
+
+
+The following have been reloaded with a version change:
+  1) hdf5/1.8.18 => hdf5/1.8.18_parallel_studio-2017.1
+  2) szip/2.1.1 => szip/2.1.1_parallel_studio-2017.1
+  3) zlib/1.2.11_parallel_studio-2017.1 => zlib/1.2.11
+
+
+The following have been reloaded with a version change:
+  1) openmpi/2.0.1_gcc-4.8.5 => openmpi/2.0.1_parallel_studio-2017.1
+
+
+The following have been reloaded with a version change:
+  1) hdf5/1.8.18_parallel_studio-2017.1 => hdf5/1.8.18
+  2) openmpi/2.0.1_parallel_studio-2017.1 => openmpi/2.1.2_gcc-4.8.5
+  3) python/3.7.0 => python/2.7.14_openmpi-2.1.2
+  4) szip/2.1.1_parallel_studio-2017.1 => szip/2.1.1
+
+[argon-lc-i18-21:26012] *** Process received signal ***
+[argon-lc-i18-21:26012] Signal: Segmentation fault (11)
+[argon-lc-i18-21:26012] Signal code: Address not mapped (1)
+[argon-lc-i18-21:26012] Failing at address: 0x38
+[argon-lc-i18-21:26011] *** Process received signal ***
+[argon-lc-i18-21:26011] Signal: Segmentation fault (11)
+[argon-lc-i18-21:26011] Signal code: Address not mapped (1)
+[argon-lc-i18-21:26011] Failing at address: 0x38
+[argon-lc-i18-21:26013] *** Process received signal ***
+[argon-lc-i18-21:26013] Signal: Segmentation fault (11)
+[argon-lc-i18-21:26013] Signal code: Address not mapped (1)
+[argon-lc-i18-21:26013] Failing at address: 0x38
+[argon-lc-i18-21:26014] *** Process received signal ***
+[argon-lc-i18-21:26014] Signal: Segmentation fault (11)
+[argon-lc-i18-21:26014] Signal code: Address not mapped (1)
+[argon-lc-i18-21:26014] Failing at address: 0x38
+[argon-lc-i18-21:26012] [ 0] /lib64/libpthread.so.0(+0xf6d0)[0x2b4eaf1756d0]
+[argon-lc-i18-21:26012] [ 1] /opt/apps/openmpi/2.1.2_gcc-4.8.5/lib/openmpi/mca_mtl_psm2.so(ompi_mtl_psm2_send+0x19b)[0x2b4ed040b6ab]
+[argon-lc-i18-21:26012] [ 2] /opt/apps/openmpi/2.1.2_gcc-4.8.5/lib/openmpi/mca_pml_cm.so(+0x29da)[0x2b4ecfb139da]
+[argon-lc-i18-21:26012] [ 3] /opt/apps/openmpi/2.1.2_gcc-4.8.5/lib/libmpi.so.20(ompi_coll_base_sendrecv_nonzero_actual+0x17b)[0x2b4ebfd0323b]
+[argon-lc-i18-21:26012] [ 4] /opt/apps/openmpi/2.1.2_gcc-4.8.5/lib/libmpi.so.20(ompi_coll_base_allgather_intra_bruck+0xd4)[0x2b4ebfd016b4]
+[argon-lc-i18-21:26012] [ 5] /opt/apps/openmpi/2.1.2_gcc-4.8.5/lib/libmpi.so.20(ompi_comm_split+0xbc)[0x2b4ebfca615c]
+[argon-lc-i18-21:26012] [ 6] /opt/apps/openmpi/2.1.2_gcc-4.8.5/lib/libmpi.so.20(MPI_Comm_split+0xa5)[0x2b4ebfcd74a5]
+[argon-lc-i18-21:26012] [ 7] /opt/apps/python/2.7.14_openmpi-2.1.2/lib/python2.7/site-packages/mpi4py/MPI.so(+0x1121d0)[0x2b4ebfa051d0]
+[argon-lc-i18-21:26012] [ 8] /opt/apps/python/2.7.14_openmpi-2.1.2/lib/libpython2.7.so.1.0(PyEval_EvalFrameEx+0x6f79)[0x2b4eaee51629]
+[argon-lc-i18-21:26012] [ 9] /opt/apps/python/2.7.14_openmpi-2.1.2/lib/libpython2.7.so.1.0(PyEval_EvalFrameEx+0x6a57)[0x2b4eaee51107]
+[argon-lc-i18-21:26012] [10] /opt/apps/python/2.7.14_openmpi-2.1.2/lib/libpython2.7.so.1.0(PyEval_EvalCodeEx+0x80d)[0x2b4eaee53e5d]
+[argon-lc-i18-21:26012] [11] /opt/apps/python/2.7.14_openmpi-2.1.2/lib/libpython2.7.so.1.0(+0x86500)[0x2b4eaedca500]
+[argon-lc-i18-21:26012] [12] /opt/apps/python/2.7.14_openmpi-2.1.2/lib/libpython2.7.so.1.0(PyObject_Call+0x43)[0x2b4eaed98663]
+[argon-lc-i18-21:26012] [13] /opt/apps/python/2.7.14_openmpi-2.1.2/lib/libpython2.7.so.1.0(+0x6319d)[0x2b4eaeda719d]
+[argon-lc-i18-21:26012] [14] /opt/apps/python/2.7.14_openmpi-2.1.2/lib/libpython2.7.so.1.0(PyObject_Call+0x43)[0x2b4eaed98663]
+[argon-lc-i18-21:26012] [15] /opt/apps/python/2.7.14_openmpi-2.1.2/lib/libpython2.7.so.1.0(PyEval_CallObjectWithKeywords+0x47)[0x2b4eaee4a0b7]
+[argon-lc-i18-21:26012] [16] /opt/apps/python/2.7.14_openmpi-2.1.2/lib/libpython2.7.so.1.0(PyInstance_New+0x68)[0x2b4eaedb1fc8]
+[argon-lc-i18-21:26012] [17] /opt/apps/python/2.7.14_openmpi-2.1.2/lib/libpython2.7.so.1.0(PyObject_Call+0x43)[0x2b4eaed98663]
+[argon-lc-i18-21:26012] [18] /opt/apps/python/2.7.14_openmpi-2.1.2/lib/libpython2.7.so.1.0(PyEval_EvalFrameEx+0x3aa6)[0x2b4eaee4e156]
+[argon-lc-i18-21:26012] [19] /opt/apps/python/2.7.14_openmpi-2.1.2/lib/libpython2.7.so.1.0(PyEval_EvalCodeEx+0x80d)[0x2b4eaee53e5d]
+[argon-lc-i18-21:26012] [20] /opt/apps/python/2.7.14_openmpi-2.1.2/lib/libpython2.7.so.1.0(PyEval_EvalCode+0x32)[0x2b4eaee53f92]
+[argon-lc-i18-21:26012] [21] [argon-lc-i18-21:26011] [ 0] [argon-lc-i18-21:26013] [ 0] /opt/apps/python/2.7.14_openmpi-2.1.2/lib/libpython2.7.so.1.0(PyEval_EvalFrameEx+0x8f47)[0x2b4eaee535f7]
+[argon-lc-i18-21:26012] [22] [argon-lc-i18-21:26014] [ 0] /lib64/libpthread.so.0(+0xf6d0)[0x2b3ebc8e96d0]
+[argon-lc-i18-21:26014] [ 1] /opt/apps/openmpi/2.1.2_gcc-4.8.5/lib/openmpi/mca_mtl_psm2.so(ompi_mtl_psm2_send+0x19b)[0x2b3eddbc36ab]
+/lib64/libpthread.so.0(+0xf6d0)[0x2b9ffb1406d0]
+[argon-lc-i18-21:26013] [ 1] /opt/apps/openmpi/2.1.2_gcc-4.8.5/lib/openmpi/mca_mtl_psm2.so(ompi_mtl_psm2_send+0x19b)[0x2ba01c3f06ab]
+[argon-lc-i18-21:26013] [ 2] /lib64/libpthread.so.0(+0xf6d0)[0x2b58ae6846d0]
+[argon-lc-i18-21:26011] [ 1] /opt/apps/openmpi/2.1.2_gcc-4.8.5/lib/openmpi/mca_mtl_psm2.so(ompi_mtl_psm2_send+0x19b)[0x2b58cf96a6ab]
+[argon-lc-i18-21:26011] [ 2] /opt/apps/python/2.7.14_openmpi-2.1.2/lib/libpython2.7.so.1.0(PyEval_EvalCodeEx+0x80d)[0x2b4eaee53e5d]
+[argon-lc-i18-21:26012] [23] [argon-lc-i18-21:26014] [ 2] /opt/apps/openmpi/2.1.2_gcc-4.8.5/lib/openmpi/mca_pml_cm.so(+0x29da)[0x2b3edd2cb9da]
+[argon-lc-i18-21:26014] [ 3] /opt/apps/openmpi/2.1.2_gcc-4.8.5/lib/openmpi/mca_pml_cm.so(+0x29da)[0x2ba01baf89da]
+[argon-lc-i18-21:26013] [ 3] /opt/apps/openmpi/2.1.2_gcc-4.8.5/lib/openmpi/mca_pml_cm.so(+0x29da)[0x2b58cf0259da]
+[argon-lc-i18-21:26011] [ 3] /opt/apps/python/2.7.14_openmpi-2.1.2/lib/libpython2.7.so.1.0(PyEval_EvalFrameEx+0x693c)[0x2b4eaee50fec]
+[argon-lc-i18-21:26012] [24] /opt/apps/openmpi/2.1.2_gcc-4.8.5/lib/libmpi.so.20(ompi_coll_base_sendrecv_nonzero_actual+0x17b)[0x2ba00bcce23b]
+[argon-lc-i18-21:26013] [ 4] /opt/apps/openmpi/2.1.2_gcc-4.8.5/lib/libmpi.so.20(ompi_coll_base_sendrecv_nonzero_actual+0x17b)[0x2b58bf21223b]
+[argon-lc-i18-21:26011] [ 4] /opt/apps/openmpi/2.1.2_gcc-4.8.5/lib/libmpi.so.20(ompi_coll_base_sendrecv_nonzero_actual+0x17b)[0x2b3ecd47723b]
+[argon-lc-i18-21:26014] [ 4] /opt/apps/python/2.7.14_openmpi-2.1.2/lib/libpython2.7.so.1.0(PyEval_EvalCodeEx+0x80d)[0x2b4eaee53e5d]
+[argon-lc-i18-21:26012] [25] /opt/apps/python/2.7.14_openmpi-2.1.2/lib/libpython2.7.so.1.0(PyEval_EvalFrameEx+0x693c)[0x2b4eaee50fec]
+[argon-lc-i18-21:26012] [26] /opt/apps/python/2.7.14_openmpi-2.1.2/lib/libpython2.7.so.1.0(PyEval_EvalCodeEx+0x80d)[0x2b4eaee53e5d]
+[argon-lc-i18-21:26012] [27] /opt/apps/openmpi/2.1.2_gcc-4.8.5/lib/libmpi.so.20(ompi_coll_base_allgather_intra_bruck+0xd4)[0x2b3ecd4756b4]
+[argon-lc-i18-21:26014] [ 5] /opt/apps/openmpi/2.1.2_gcc-4.8.5/lib/libmpi.so.20(ompi_coll_base_allgather_intra_bruck+0xd4)[0x2ba00bccc6b4]
+[argon-lc-i18-21:26013] [ 5] /opt/apps/openmpi/2.1.2_gcc-4.8.5/lib/libmpi.so.20(ompi_coll_base_allgather_intra_bruck+0xd4)[0x2b58bf2106b4]
+[argon-lc-i18-21:26011] [ 5] /opt/apps/openmpi/2.1.2_gcc-4.8.5/lib/libmpi.so.20(ompi_comm_split+0xbc)[0x2b58bf1b515c]
+[argon-lc-i18-21:26011] /opt/apps/python/2.7.14_openmpi-2.1.2/lib/libpython2.7.so.1.0(PyEval_EvalFrameEx+0x693c)[0x2b4eaee50fec]
+[argon-lc-i18-21:26012] [28] /opt/apps/python/2.7.14_openmpi-2.1.2/lib/libpython2.7.so.1.0(PyEval_EvalCodeEx+0x80d)[0x2b4eaee53e5d]
+[argon-lc-i18-21:26012] /opt/apps/openmpi/2.1.2_gcc-4.8.5/lib/libmpi.so.20(ompi_comm_split+0xbc)[0x2b3ecd41a15c]
+[argon-lc-i18-21:26014] [ 6] /opt/apps/openmpi/2.1.2_gcc-4.8.5/lib/libmpi.so.20(ompi_comm_split+0xbc)[0x2ba00bc7115c]
+[argon-lc-i18-21:26013] [ 6] [ 6] [29] /opt/apps/python/2.7.14_openmpi-2.1.2/lib/libpython2.7.so.1.0(PyEval_EvalFrameEx+0x693c)[0x2b4eaee50fec]
+[argon-lc-i18-21:26012] *** End of error message ***
+/opt/apps/openmpi/2.1.2_gcc-4.8.5/lib/libmpi.so.20(MPI_Comm_split+0xa5)[0x2ba00bca24a5]
+[argon-lc-i18-21:26013] [ 7] /opt/apps/python/2.7.14_openmpi-2.1.2/lib/python2.7/site-packages/mpi4py/MPI.so(+0x1121d0)[0x2ba00b9d01d0]
+[argon-lc-i18-21:26013] [ 8] /opt/apps/openmpi/2.1.2_gcc-4.8.5/lib/libmpi.so.20(MPI_Comm_split+0xa5)[0x2b58bf1e64a5]
+[argon-lc-i18-21:26011] [ 7] /opt/apps/python/2.7.14_openmpi-2.1.2/lib/python2.7/site-packages/mpi4py/MPI.so(+0x1121d0)[0x2b58bef141d0]
+[argon-lc-i18-21:26011] [ 8] /opt/apps/openmpi/2.1.2_gcc-4.8.5/lib/libmpi.so.20(MPI_Comm_split+0xa5)[0x2b3ecd44b4a5]
+[argon-lc-i18-21:26014] [ 7] /opt/apps/python/2.7.14_openmpi-2.1.2/lib/python2.7/site-packages/mpi4py/MPI.so(+0x1121d0)[0x2b3ecd1791d0]
+[argon-lc-i18-21:26014] [ 8] /opt/apps/python/2.7.14_openmpi-2.1.2/lib/libpython2.7.so.1.0(PyEval_EvalFrameEx+0x6f79)[0x2b3ebc5c5629]
+[argon-lc-i18-21:26014] [ 9] /opt/apps/python/2.7.14_openmpi-2.1.2/lib/libpython2.7.so.1.0(PyEval_EvalFrameEx+0x6f79)[0x2b9ffae1c629]
+[argon-lc-i18-21:26013] [ 9] /opt/apps/python/2.7.14_openmpi-2.1.2/lib/libpython2.7.so.1.0(PyEval_EvalFrameEx+0x6a57)[0x2b9ffae1c107]
+/opt/apps/python/2.7.14_openmpi-2.1.2/lib/libpython2.7.so.1.0(PyEval_EvalFrameEx+0x6f79)[0x2b58ae360629]
+[argon-lc-i18-21:26011] [ 9] /opt/apps/python/2.7.14_openmpi-2.1.2/lib/libpython2.7.so.1.0(PyEval_EvalFrameEx+0x6a57)[0x2b58ae360107]
+[argon-lc-i18-21:26011] [10] /opt/apps/python/2.7.14_openmpi-2.1.2/lib/libpython2.7.so.1.0(PyEval_EvalFrameEx+0x6a57)[0x2b3ebc5c5107]
+[argon-lc-i18-21:26014] [10] [argon-lc-i18-21:26013] [10] /opt/apps/python/2.7.14_openmpi-2.1.2/lib/libpython2.7.so.1.0(PyEval_EvalCodeEx+0x80d)[0x2b58ae362e5d]
+[argon-lc-i18-21:26011] [11] /opt/apps/python/2.7.14_openmpi-2.1.2/lib/libpython2.7.so.1.0(PyEval_EvalCodeEx+0x80d)[0x2b3ebc5c7e5d]
+[argon-lc-i18-21:26014] [11] /opt/apps/python/2.7.14_openmpi-2.1.2/lib/libpython2.7.so.1.0(PyEval_EvalCodeEx+0x80d)[0x2b9ffae1ee5d]
+[argon-lc-i18-21:26013] [11] /opt/apps/python/2.7.14_openmpi-2.1.2/lib/libpython2.7.so.1.0(+0x86500)[0x2b58ae2d9500]
+[argon-lc-i18-21:26011] [12] /opt/apps/python/2.7.14_openmpi-2.1.2/lib/libpython2.7.so.1.0(+0x86500)[0x2b3ebc53e500]
+[argon-lc-i18-21:26014] [12] /opt/apps/python/2.7.14_openmpi-2.1.2/lib/libpython2.7.so.1.0(+0x86500)[0x2b9ffad95500]
+[argon-lc-i18-21:26013] [12] /opt/apps/python/2.7.14_openmpi-2.1.2/lib/libpython2.7.so.1.0(PyObject_Call+0x43)[0x2b58ae2a7663]
+[argon-lc-i18-21:26011] [13] /opt/apps/python/2.7.14_openmpi-2.1.2/lib/libpython2.7.so.1.0(PyObject_Call+0x43)[0x2b3ebc50c663]
+[argon-lc-i18-21:26014] [13] /opt/apps/python/2.7.14_openmpi-2.1.2/lib/libpython2.7.so.1.0(PyObject_Call+0x43)[0x2b9ffad63663]
+[argon-lc-i18-21:26013] [13] /opt/apps/python/2.7.14_openmpi-2.1.2/lib/libpython2.7.so.1.0(+0x6319d)[0x2b3ebc51b19d]
+[argon-lc-i18-21:26014] [14] /opt/apps/python/2.7.14_openmpi-2.1.2/lib/libpython2.7.so.1.0(+0x6319d)[0x2b58ae2b619d]
+[argon-lc-i18-21:26011] [14] /opt/apps/python/2.7.14_openmpi-2.1.2/lib/libpython2.7.so.1.0(PyObject_Call+0x43)[0x2b58ae2a7663]
+/opt/apps/python/2.7.14_openmpi-2.1.2/lib/libpython2.7.so.1.0(+0x6319d)[0x2b9ffad7219d]
+[argon-lc-i18-21:26013] [14] [argon-lc-i18-21:26011] [15] /opt/apps/python/2.7.14_openmpi-2.1.2/lib/libpython2.7.so.1.0(PyObject_Call+0x43)[0x2b3ebc50c663]
+[argon-lc-i18-21:26014] [15] /opt/apps/python/2.7.14_openmpi-2.1.2/lib/libpython2.7.so.1.0(PyObject_Call+0x43)[0x2b9ffad63663]
+[argon-lc-i18-21:26013] [15] /opt/apps/python/2.7.14_openmpi-2.1.2/lib/libpython2.7.so.1.0(PyEval_CallObjectWithKeywords+0x47)[0x2b58ae3590b7]
+[argon-lc-i18-21:26011] [16] /opt/apps/python/2.7.14_openmpi-2.1.2/lib/libpython2.7.so.1.0(PyEval_CallObjectWithKeywords+0x47)[0x2b3ebc5be0b7]
+[argon-lc-i18-21:26014] [16] /opt/apps/python/2.7.14_openmpi-2.1.2/lib/libpython2.7.so.1.0(PyEval_CallObjectWithKeywords+0x47)[0x2b9ffae150b7]
+[argon-lc-i18-21:26013] [16] /opt/apps/python/2.7.14_openmpi-2.1.2/lib/libpython2.7.so.1.0(PyInstance_New+0x68)[0x2b58ae2c0fc8]
+[argon-lc-i18-21:26011] [17] /opt/apps/python/2.7.14_openmpi-2.1.2/lib/libpython2.7.so.1.0(PyInstance_New+0x68)[0x2b9ffad7cfc8]
+[argon-lc-i18-21:26013] [17] /opt/apps/python/2.7.14_openmpi-2.1.2/lib/libpython2.7.so.1.0(PyInstance_New+0x68)[0x2b3ebc525fc8]
+[argon-lc-i18-21:26014] [17] /opt/apps/python/2.7.14_openmpi-2.1.2/lib/libpython2.7.so.1.0(PyObject_Call+0x43)[0x2b58ae2a7663]
+[argon-lc-i18-21:26011] [18] /opt/apps/python/2.7.14_openmpi-2.1.2/lib/libpython2.7.so.1.0(PyObject_Call+0x43)[0x2b9ffad63663]
+[argon-lc-i18-21:26013] [18] /opt/apps/python/2.7.14_openmpi-2.1.2/lib/libpython2.7.so.1.0(PyObject_Call+0x43)[0x2b3ebc50c663]
+[argon-lc-i18-21:26014] [18] /opt/apps/python/2.7.14_openmpi-2.1.2/lib/libpython2.7.so.1.0(PyEval_EvalFrameEx+0x3aa6)[0x2b58ae35d156]
+[argon-lc-i18-21:26011] [19] /opt/apps/python/2.7.14_openmpi-2.1.2/lib/libpython2.7.so.1.0(PyEval_EvalFrameEx+0x3aa6)[0x2b9ffae19156]
+[argon-lc-i18-21:26013] [19] /opt/apps/python/2.7.14_openmpi-2.1.2/lib/libpython2.7.so.1.0(PyEval_EvalFrameEx+0x3aa6)[0x2b3ebc5c2156]
+[argon-lc-i18-21:26014] [19] /opt/apps/python/2.7.14_openmpi-2.1.2/lib/libpython2.7.so.1.0(PyEval_EvalCodeEx+0x80d)[0x2b58ae362e5d]
+[argon-lc-i18-21:26011] [20] /opt/apps/python/2.7.14_openmpi-2.1.2/lib/libpython2.7.so.1.0(PyEval_EvalCodeEx+0x80d)[0x2b3ebc5c7e5d]
+[argon-lc-i18-21:26014] [20] /opt/apps/python/2.7.14_openmpi-2.1.2/lib/libpython2.7.so.1.0(PyEval_EvalCodeEx+0x80d)[0x2b9ffae1ee5d]
+[argon-lc-i18-21:26013] [20] /opt/apps/python/2.7.14_openmpi-2.1.2/lib/libpython2.7.so.1.0(PyEval_EvalCode+0x32)[0x2b9ffae1ef92]
+/opt/apps/python/2.7.14_openmpi-2.1.2/lib/libpython2.7.so.1.0(PyEval_EvalCode+0x32)[0x2b58ae362f92]
+[argon-lc-i18-21:26011] [21] /opt/apps/python/2.7.14_openmpi-2.1.2/lib/libpython2.7.so.1.0(PyEval_EvalFrameEx+0x8f47)[0x2b58ae3625f7]
+[argon-lc-i18-21:26011] [22] [argon-lc-i18-21:26013] [21] /opt/apps/python/2.7.14_openmpi-2.1.2/lib/libpython2.7.so.1.0(PyEval_EvalCode+0x32)[0x2b3ebc5c7f92]
+[argon-lc-i18-21:26014] [21] /opt/apps/python/2.7.14_openmpi-2.1.2/lib/libpython2.7.so.1.0(PyEval_EvalCodeEx+0x80d)[0x2b58ae362e5d]
+[argon-lc-i18-21:26011] [23] /opt/apps/python/2.7.14_openmpi-2.1.2/lib/libpython2.7.so.1.0(PyEval_EvalFrameEx+0x8f47)[0x2b9ffae1e5f7]
+[argon-lc-i18-21:26013] [22] /opt/apps/python/2.7.14_openmpi-2.1.2/lib/libpython2.7.so.1.0(PyEval_EvalFrameEx+0x8f47)[0x2b3ebc5c75f7]
+[argon-lc-i18-21:26014] [22] /opt/apps/python/2.7.14_openmpi-2.1.2/lib/libpython2.7.so.1.0(PyEval_EvalFrameEx+0x693c)[0x2b58ae35ffec]
+[argon-lc-i18-21:26011] [24] /opt/apps/python/2.7.14_openmpi-2.1.2/lib/libpython2.7.so.1.0(PyEval_EvalCodeEx+0x80d)[0x2b9ffae1ee5d]
+[argon-lc-i18-21:26013] [23] /opt/apps/python/2.7.14_openmpi-2.1.2/lib/libpython2.7.so.1.0(PyEval_EvalCodeEx+0x80d)[0x2b3ebc5c7e5d]
+[argon-lc-i18-21:26014] [23] /opt/apps/python/2.7.14_openmpi-2.1.2/lib/libpython2.7.so.1.0(PyEval_EvalCodeEx+0x80d)[0x2b58ae362e5d]
+[argon-lc-i18-21:26011] [25] /opt/apps/python/2.7.14_openmpi-2.1.2/lib/libpython2.7.so.1.0(PyEval_EvalFrameEx+0x693c)[0x2b9ffae1bfec]
+[argon-lc-i18-21:26013] [24] /opt/apps/python/2.7.14_openmpi-2.1.2/lib/libpython2.7.so.1.0(PyEval_EvalFrameEx+0x693c)[0x2b58ae35ffec]
+[argon-lc-i18-21:26011] [26] /opt/apps/python/2.7.14_openmpi-2.1.2/lib/libpython2.7.so.1.0(PyEval_EvalCodeEx+0x80d)[0x2b58ae362e5d]
+/opt/apps/python/2.7.14_openmpi-2.1.2/lib/libpython2.7.so.1.0(PyEval_EvalFrameEx+0x693c)[0x2b3ebc5c4fec]
+[argon-lc-i18-21:26014] [24] /opt/apps/python/2.7.14_openmpi-2.1.2/lib/libpython2.7.so.1.0(PyEval_EvalCodeEx+0x80d)[0x2b3ebc5c7e5d]
+[argon-lc-i18-21:26014] /opt/apps/python/2.7.14_openmpi-2.1.2/lib/libpython2.7.so.1.0(PyEval_EvalCodeEx+0x80d)[0x2b9ffae1ee5d]
+[argon-lc-i18-21:26013] [25] [argon-lc-i18-21:26011] [27] /opt/apps/python/2.7.14_openmpi-2.1.2/lib/libpython2.7.so.1.0(PyEval_EvalFrameEx+0x693c)[0x2b58ae35ffec]
+[argon-lc-i18-21:26011] [28] [25] /opt/apps/python/2.7.14_openmpi-2.1.2/lib/libpython2.7.so.1.0(PyEval_EvalFrameEx+0x693c)[0x2b3ebc5c4fec]
+/opt/apps/python/2.7.14_openmpi-2.1.2/lib/libpython2.7.so.1.0(PyEval_EvalFrameEx+0x693c)[0x2b9ffae1bfec]
+[argon-lc-i18-21:26013] [26] /opt/apps/python/2.7.14_openmpi-2.1.2/lib/libpython2.7.so.1.0(PyEval_EvalCodeEx+0x80d)[0x2b9ffae1ee5d]
+/opt/apps/python/2.7.14_openmpi-2.1.2/lib/libpython2.7.so.1.0(PyEval_EvalCodeEx+0x80d)[0x2b58ae362e5d]
+[argon-lc-i18-21:26011] [29] /opt/apps/python/2.7.14_openmpi-2.1.2/lib/libpython2.7.so.1.0(PyEval_EvalFrameEx+0x693c)[0x2b58ae35ffec]
+[argon-lc-i18-21:26011] *** End of error message ***
+[argon-lc-i18-21:26014] [26] [argon-lc-i18-21:26013] [27] /opt/apps/python/2.7.14_openmpi-2.1.2/lib/libpython2.7.so.1.0(PyEval_EvalCodeEx+0x80d)[0x2b3ebc5c7e5d]
+[argon-lc-i18-21:26014] [27] /opt/apps/python/2.7.14_openmpi-2.1.2/lib/libpython2.7.so.1.0(PyEval_EvalFrameEx+0x693c)[0x2b9ffae1bfec]
+[argon-lc-i18-21:26013] [28] /opt/apps/python/2.7.14_openmpi-2.1.2/lib/libpython2.7.so.1.0(PyEval_EvalFrameEx+0x693c)[0x2b3ebc5c4fec]
+[argon-lc-i18-21:26014] [28] /opt/apps/python/2.7.14_openmpi-2.1.2/lib/libpython2.7.so.1.0(PyEval_EvalCodeEx+0x80d)[0x2b9ffae1ee5d]
+[argon-lc-i18-21:26013] [29] /opt/apps/python/2.7.14_openmpi-2.1.2/lib/libpython2.7.so.1.0(PyEval_EvalCodeEx+0x80d)[0x2b3ebc5c7e5d]
+[argon-lc-i18-21:26014] [29] /opt/apps/python/2.7.14_openmpi-2.1.2/lib/libpython2.7.so.1.0(PyEval_EvalFrameEx+0x693c)[0x2b9ffae1bfec]
+[argon-lc-i18-21:26013] *** End of error message ***
+/opt/apps/python/2.7.14_openmpi-2.1.2/lib/libpython2.7.so.1.0(PyEval_EvalFrameEx+0x693c)[0x2b3ebc5c4fec]
+[argon-lc-i18-21:26014] *** End of error message ***
+[argon-itf-cf50-34:14875] *** Process received signal ***
+[argon-itf-cf50-34:14875] Signal: Segmentation fault (11)
+[argon-itf-cf50-34:14875] Signal code: Address not mapped (1)
+[argon-itf-cf50-34:14875] Failing at address: 0x1
+[argon-itf-cf50-34:14875] [ 0] /lib64/libc.so.6(+0x362f0)[0x2b1c8062f2f0]
+[argon-itf-cf50-34:14875] [ 1] /opt/apps/openmpi/2.1.2_gcc-4.8.5/lib/openmpi/mca_mtl_psm.so(ompi_mtl_psm_send+0xb8)[0x2b1ca11f94d8]
+[argon-itf-cf50-34:14875] [ 2] /opt/apps/openmpi/2.1.2_gcc-4.8.5/lib/openmpi/mca_pml_cm.so(+0x29da)[0x2b1ca049a9da]
+[argon-itf-cf50-34:14875] [ 3] /opt/apps/openmpi/2.1.2_gcc-4.8.5/lib/libmpi.so.20(ompi_coll_base_sendrecv_nonzero_actual+0x17b)[0x2b1c9087123b]
+[argon-itf-cf50-34:14875] [ 4] /opt/apps/openmpi/2.1.2_gcc-4.8.5/lib/libmpi.so.20(ompi_coll_base_allgather_intra_bruck+0xd4)[0x2b1c9086f6b4]
+[argon-itf-cf50-34:14875] [ 5] /opt/apps/openmpi/2.1.2_gcc-4.8.5/lib/libmpi.so.20(ompi_comm_split+0xbc)[0x2b1c9081415c]
+[argon-itf-cf50-34:14875] [ 6] /opt/apps/openmpi/2.1.2_gcc-4.8.5/lib/libmpi.so.20(MPI_Comm_split+0xa5)[0x2b1c908454a5]
+[argon-itf-cf50-34:14875] [ 7] /opt/apps/python/2.7.14_openmpi-2.1.2/lib/python2.7/site-packages/mpi4py/MPI.so(+0x1121d0)[0x2b1c905731d0]
+[argon-itf-cf50-34:14875] [ 8] /opt/apps/python/2.7.14_openmpi-2.1.2/lib/libpython2.7.so.1.0(PyEval_EvalFrameEx+0x6f79)[0x2b1c7f9bf629]
+[argon-itf-cf50-34:14875] [ 9] /opt/apps/python/2.7.14_openmpi-2.1.2/lib/libpython2.7.so.1.0(PyEval_EvalFrameEx+0x6a57)[0x2b1c7f9bf107]
+[argon-itf-cf50-34:14875] [10] /opt/apps/python/2.7.14_openmpi-2.1.2/lib/libpython2.7.so.1.0(PyEval_EvalCodeEx+0x80d)[0x2b1c7f9c1e5d]
+[argon-itf-cf50-34:14875] [11] /opt/apps/python/2.7.14_openmpi-2.1.2/lib/libpython2.7.so.1.0(+0x86500)[0x2b1c7f938500]
+[argon-itf-cf50-34:14875] [12] /opt/apps/python/2.7.14_openmpi-2.1.2/lib/libpython2.7.so.1.0(PyObject_Call+0x43)[0x2b1c7f906663]
+[argon-itf-cf50-34:14875] [13] /opt/apps/python/2.7.14_openmpi-2.1.2/lib/libpython2.7.so.1.0(+0x6319d)[0x2b1c7f91519d]
+[argon-itf-cf50-34:14875] [14] /opt/apps/python/2.7.14_openmpi-2.1.2/lib/libpython2.7.so.1.0(PyObject_Call+0x43)[0x2b1c7f906663]
+[argon-itf-cf50-34:14875] [15] /opt/apps/python/2.7.14_openmpi-2.1.2/lib/libpython2.7.so.1.0(PyEval_CallObjectWithKeywords+0x47)[0x2b1c7f9b80b7]
+[argon-itf-cf50-34:14875] [16] /opt/apps/python/2.7.14_openmpi-2.1.2/lib/libpython2.7.so.1.0(PyInstance_New+0x68)[0x2b1c7f91ffc8]
+[argon-itf-cf50-34:14875] [17] /opt/apps/python/2.7.14_openmpi-2.1.2/lib/libpython2.7.so.1.0(PyObject_Call+0x43)[0x2b1c7f906663]
+[argon-itf-cf50-34:14875] [18] /opt/apps/python/2.7.14_openmpi-2.1.2/lib/libpython2.7.so.1.0(PyEval_EvalFrameEx+0x3aa6)[0x2b1c7f9bc156]
+[argon-itf-cf50-34:14875] [19] /opt/apps/python/2.7.14_openmpi-2.1.2/lib/libpython2.7.so.1.0(PyEval_EvalCodeEx+0x80d)[0x2b1c7f9c1e5d]
+[argon-itf-cf50-34:14875] [20] /opt/apps/python/2.7.14_openmpi-2.1.2/lib/libpython2.7.so.1.0(PyEval_EvalCode+0x32)[0x2b1c7f9c1f92]
+[argon-itf-cf50-34:14875] [21] /opt/apps/python/2.7.14_openmpi-2.1.2/lib/libpython2.7.so.1.0(PyEval_EvalFrameEx+0x8f47)[0x2b1c7f9c15f7]
+[argon-itf-cf50-34:14875] [22] /opt/apps/python/2.7.14_openmpi-2.1.2/lib/libpython2.7.so.1.0(PyEval_EvalCodeEx+0x80d)[0x2b1c7f9c1e5d]
+[argon-itf-cf50-34:14875] [23] /opt/apps/python/2.7.14_openmpi-2.1.2/lib/libpython2.7.so.1.0(PyEval_EvalFrameEx+0x693c)[0x2b1c7f9befec]
+[argon-itf-cf50-34:14875] [24] /opt/apps/python/2.7.14_openmpi-2.1.2/lib/libpython2.7.so.1.0(PyEval_EvalCodeEx+0x80d)[0x2b1c7f9c1e5d]
+[argon-itf-cf50-34:14875] [25] /opt/apps/python/2.7.14_openmpi-2.1.2/lib/libpython2.7.so.1.0(PyEval_EvalFrameEx+0x693c)[0x2b1c7f9befec]
+[argon-itf-cf50-34:14875] [26] /opt/apps/python/2.7.14_openmpi-2.1.2/lib/libpython2.7.so.1.0(PyEval_EvalCodeEx+0x80d)[0x2b1c7f9c1e5d]
+[argon-itf-cf50-34:14875] [27] /opt/apps/python/2.7.14_openmpi-2.1.2/lib/libpython2.7.so.1.0(PyEval_EvalFrameEx+0x693c)[0x2b1c7f9befec]
+[argon-itf-cf50-34:14875] [28] /opt/apps/python/2.7.14_openmpi-2.1.2/lib/libpython2.7.so.1.0(PyEval_EvalCodeEx+0x80d)[0x2b1c7f9c1e5d]
+[argon-itf-cf50-34:14875] [29] /opt/apps/python/2.7.14_openmpi-2.1.2/lib/libpython2.7.so.1.0(PyEval_EvalFrameEx+0x693c)[0x2b1c7f9befec]
+[argon-itf-cf50-34:14875] *** End of error message ***

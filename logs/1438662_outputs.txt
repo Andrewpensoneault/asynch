@@ -1,0 +1,7 @@
+Date: 2016-04-01 00:00:00, Time to run: 3.60012054443e-05 seconds
+Date: 2016-04-03 00:00:00, Time to run: 149.920186996 seconds
+Date: 2016-04-03 01:00:00, Time to run: 89.4477450848 seconds
+Date: 2016-04-03 02:00:00, Time to run: 86.3759481907 seconds
+Date: 2016-04-03 03:00:00, Time to run: 86.8679580688 seconds
+Date: 2016-04-03 04:00:00, Time to run: 75.7341477871 seconds
+Date: 2016-04-03 05:00:00, Time to run: 78.2593889236 seconds

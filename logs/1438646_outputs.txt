@@ -1,0 +1,3 @@
+--------------------------------------------------------------------------
+mpiexec noticed that process rank 2 with PID 0 on node argon-lc-i18-20 exited on signal 11 (Segmentation fault).
+--------------------------------------------------------------------------

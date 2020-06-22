@@ -37,12 +37,16 @@ Traceback (most recent call last):
     mod_name, mod_fname, mod_loader, pkg_name)
   File "/opt/apps/python/2.7.14_openmpi-2.1.2/lib/python2.7/runpy.py", line 72, in _run_code
     exec code in run_globals
-  File "asynchdist_assim_parallel_simp.py", line 44, in <module>
-    (state_full,weights) = assim.assimilate(state_full, assim.asynch_data['measure'])
-  File "/Users/apensoneault/asynch_python/asynch_py/asynch_interface_parallel.py", line 534, in assimilate
-    (state,params) = self.fix_states(state,params)
-  File "/Users/apensoneault/asynch_python/asynch_py/asynch_interface_parallel.py", line 539, in fix_states
-    (state,params) = fix_states(self.asynch_data,state,params)
-  File "/Users/apensoneault/asynch_python/asynch_py/perturb.py", line 5, in fix_states
-    lower_bounds_var = np.array([asynch_data['bounds_var'][i][0] for i in range(len(asynch_data['bounds_var']))])
-KeyError: 'bounds_var'
+  File "asynchdist_assim_parallel_simp.py", line 56, in <module>
+    assim.remove_files()
+  File "/Users/apensoneault/asynch_python/asynch_py/asynch_interface_parallel.py", line 711, in remove_files
+    remove_files(self.asynch_data['tmp_folder'])
+  File "/Users/apensoneault/asynch_python/asynch_py/io.py", line 280, in remove_files
+    rmtree(tmp_folder)
+  File "/opt/apps/python/2.7.14_openmpi-2.1.2/lib/python2.7/shutil.py", line 261, in rmtree
+    rmtree(fullname, ignore_errors, onerror)
+  File "/opt/apps/python/2.7.14_openmpi-2.1.2/lib/python2.7/shutil.py", line 266, in rmtree
+    onerror(os.remove, fullname, sys.exc_info())
+  File "/opt/apps/python/2.7.14_openmpi-2.1.2/lib/python2.7/shutil.py", line 264, in rmtree
+    os.remove(fullname)
+OSError: [Errno 16] Device or resource busy: '/nfsscratch/Users/apensoneault/SIR_3/0/.nfs000000000271eab300000ca5'

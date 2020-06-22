@@ -1,5 +1,5 @@
 import numpy as np
-from asynch_py.assimilate import particle, enkf, no_assimilate
+from asynch_py.assimilate import particle, enkf, no_assimilate, srenkf
 from asynch_py.measure import links, soil_moisture
 from asynch_py.perturb import absolute, percent, per_variable_absolute, per_variable_percent
 from asynch_py.process_error import process_error
@@ -12,6 +12,8 @@ def process_asynch_params(data):
 
     if data['assim_type'] == 'particle':
     	data['assim'] = particle(assim_params)
+    elif data['assim_type'] == 'srenkf':
+        data['assim'] = srenkf(assim_params)
     elif data['assim_type'] == 'enkf':
         data['assim'] = enkf(assim_params)
     elif data['assim_type'] == 'no_assimilate':

@@ -12,7 +12,7 @@ def fix_states(asynch_data,state,params):
     num_param = len(lower_bounds_param)   
 
     for i in range(num_var):
-        state[i::num_var,:] = np.minimum(np.maximum(state[i::num_var,:],lower_bounds_var[i]),upper_bounds_param[i])
+        state[i::num_var,:] = np.minimum(np.maximum(state[i::num_var,:],lower_bounds_var[i]),upper_bounds_var[i])
 
     for i in range(num_param):
         params[i,:] = np.minimum(np.maximum(params[i,:],lower_bounds_param[i]),upper_bounds_param[i])

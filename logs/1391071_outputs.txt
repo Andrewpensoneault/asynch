@@ -1,0 +1,7 @@
+Date: 2016-04-01 00:00:00, Time to run: -9.53674316406e-07 seconds
+Date: 2016-04-03 00:00:00, Time to run: 88.8997411728 seconds
+Date: 2016-04-03 01:00:00, Time to run: 47.0924770832 seconds
+Date: 2016-04-03 02:00:00, Time to run: 55.5887432098 seconds
+--------------------------------------------------------------------------
+mpiexec noticed that process rank 0 with PID 0 on node argon-lc-g11-40 exited on signal 9 (Killed).
+--------------------------------------------------------------------------

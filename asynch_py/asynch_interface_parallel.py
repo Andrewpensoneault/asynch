@@ -442,8 +442,6 @@ class Assim:
         self.global_params = self.make_global_params()
         self.link_vars = len(self.asynch_data['id_list'])*self.asynch_data['link_var_num']
         self.num_steps = self.asynch_data['num_steps']
-        #self.restart_time = 0
-        #self.max_restart_time = 100
         if self.my_rank == 0:
             self.forcings = self.get_forcings() 
 
@@ -529,16 +527,14 @@ class Assim:
     def assimilate(self,state,measure):
         ens_anal = self.asynch_data['assim'].assimilate(state,self.asynch_data,measure)
         weights = self.asynch_data['assim'].weights
-        state = ens_anal[:-len(self.asynch_data['init_global_params']),:]
-        params = ens_anal[-len(self.asynch_data['init_global_params']):,:]
-        import pdb; pdb.set_trace()
-        (state,params) = self.fix_states(state,params)
-        ens_anal = np.vstack((state,params))
         return (ens_anal,weights)
 
-    def fix_states(self,state,params):
+    def fix_states(self,ens_anal):
+        state = ens_anal[:-len(self.asynch_data['init_global_params']),:]
+        params = ens_anal[-len(self.asynch_data['init_global_params']):,:]
         (state,params) = fix_states(self.asynch_data,state,params)
-        return (state,params)
+        ens_anal = np.vstack((state,params))
+        return ens_anal
 
     def get_current_meas(self):
         if my_rank == 0:
@@ -557,50 +553,28 @@ class Assim:
         num_param = len(self.asynch_data['init_global_params'])
         state = np.zeros(self.init_cond.shape)
         state_out = np.zeros((num_link*link_var_num*num_steps+num_param,self.my_ens_num))
-        #self.restart_time = np.mod(self.restart_time+1,self.max_restart_time)
-        #if np.logical_and(self.restart_time == 0,self.first_time != True):
-        #    self.free_asynch_dict()
-        #    self.asynch_dict = self.make_asynch_dict()
+        if self.first_time != True:
+           self.free_asynch_dict()
+           self.asynch_dict = self.make_asynch_dict()
         for n in self.ens_list:
             if n < ens_num:
                 n_idx = np.nonzero(self.ens_list==n)[0][0]
+                self.asynch_dict[n].Parse_GBL(str(self.asynch_data['tmp_folder'] + str(n) + '.gbl'))
+                self.asynch_dict[n].Load_Network()
+                self.asynch_dict[n].Partition_Network()
+                self.asynch_dict[n].Load_Network_Parameters(False)
+                self.asynch_dict[n].Load_Dams()
+                self.asynch_dict[n].Load_Numerical_Error_Data()
+                self.asynch_dict[n].Initialize_Model()
+                self.asynch_dict[n].Load_Save_Lists()
                 if self.first_time == True:
-                    self.asynch_dict[n].Parse_GBL(str(self.asynch_data['tmp_folder'] + str(n) + '.gbl'))
-                    self.asynch_dict[n].Load_Network()
-                    self.asynch_dict[n].Partition_Network()
-                    self.asynch_dict[n].Load_Network_Parameters(False)
-                    self.asynch_dict[n].Load_Dams()
-                    self.asynch_dict[n].Load_Numerical_Error_Data()
-                    self.asynch_dict[n].Initialize_Model()
-                    self.asynch_dict[n].Load_Save_Lists()
                     self.asynch_dict[n].Load_Initial_Conditions()
-                    self.asynch_dict[n].Load_Forcings()
-                    self.asynch_dict[n].Finalize_Network()
-                    self.asynch_dict[n].Calculate_Step_Sizes()
-                    self.asynch_dict[n].Prepare_Output()
-                    self.asynch_dict[n].Prepare_Temp_Files()
-               # elif self.restart_time == 0:
-               #     self.asynch_dict[n].Parse_GBL(str(self.asynch_data['tmp_folder'] + str(n) + '.gbl'))
-               #     self.asynch_dict[n].Load_Network()
-               #     self.asynch_dict[n].Partition_Network()
-               #     self.asynch_dict[n].Load_Network_Parameters(False)
-               #     self.asynch_dict[n].Load_Dams()
-               #     self.asynch_dict[n].Load_Numerical_Error_Data()
-               #     self.asynch_dict[n].Initialize_Model()
-               #     self.asynch_dict[n].Load_Save_Lists()
-               #     self.asynch_dict[n].Load_Initial_Conditions()
-               #     self.asynch_dict[n].Load_Forcings()
-               #     self.asynch_dict[n].Finalize_Network()
-               #     self.asynch_dict[n].Calculate_Step_Sizes()
-               #     self.asynch_dict[n].Prepare_Output()
-               #     self.asynch_dict[n].Prepare_Temp_Files()
-               #     init_next = self.init_cond 
-               #     param_next = self.global_params
-               #     link_var_num = self.asynch_data['link_var_num']
-               #     init = [[init_next[k+j*link_var_num,n_idx] for k in range(link_var_num)] for j in range(num_link)]
-               #     self.asynch_dict[n].Set_System_State(0,init)
-               #     self.asynch_dict[n].Set_Global_Parameters(param_next[:,n_idx].tolist()) 
-                else:
+                self.asynch_dict[n].Load_Forcings()
+                self.asynch_dict[n].Finalize_Network()
+                self.asynch_dict[n].Calculate_Step_Sizes()
+                self.asynch_dict[n].Prepare_Output()
+                self.asynch_dict[n].Prepare_Temp_Files()
+                if self.first_time != True:
                     init_next = self.init_cond 
                     param_next = self.global_params
                     link_var_num = self.asynch_data['link_var_num']
@@ -704,7 +678,7 @@ class Assim:
                 data = state
             else:
                 time = [self.current_time]
-                data = state[-(num_param+num_links*link_var_num):-num_param,:]
+                data = state[-(num_param+num_links*link_var_num):,:]
             write_results(data,id_list,link_var_num,time,self.asynch_data,weights)
 
 

@@ -1,0 +1,10 @@
+Date: 2016-04-01 00:00:00, Time to run: 1.09672546387e-05 seconds
+[0]: Error: Could not create file /localscratch/Users/apensoneault/SIR/25/25_6516_0.
+--------------------------------------------------------------------------
+MPI_ABORT was invoked on rank 0 in communicator MPI COMMUNICATOR 3 SPLIT FROM 0
+with errorcode 1.
+
+NOTE: invoking MPI_ABORT causes Open MPI to kill all MPI processes.
+You may or may not see output from other processes, depending on
+exactly when Open MPI kills them.
+--------------------------------------------------------------------------

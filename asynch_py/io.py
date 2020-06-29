@@ -118,20 +118,24 @@ def get_asynch_params(filename):
     return data
 
 def get_rainfall(data):
-    filename = data['rainfall_source']
-    time_start = data['time_window'][0]
-    time_stop = data['time_window'][1]
+    if data['rain_type'] == 'csv':
+        filename = data['rainfall_source']
+        time_start = data['time_window'][0]
+        time_stop = data['time_window'][1]
 
-    HEADER_ROWS = 1
-    contents = read_csv(filename,HEADER_ROWS)
-    rain_list = np.array(contents[:,2]).astype('float')
-    rain_times = np.array(contents[:,1]).astype('int')
-    rain_ids = np.array(contents[:,0]).astype('int')
-    index = np.nonzero(np.logical_and(rain_times>=time_start, rain_times<=time_stop))
-    rain_times = rain_times[index]
-    rain_list = rain_list[index]
-    rain_ids = rain_ids[index]
-    
+        HEADER_ROWS = 1
+        contents = read_csv(filename,HEADER_ROWS)
+        rain_list = np.array(contents[:,2]).astype('float')
+        rain_times = np.array(contents[:,1]).astype('int')
+        rain_ids = np.array(contents[:,0]).astype('int')
+        index = np.nonzero(np.logical_and(rain_times>=time_start, rain_times<=time_stop))
+        rain_times = rain_times[index]
+        rain_list = rain_list[index]
+        rain_ids = rain_ids[index]
+    elif data['rain_type'] == 'forcasting':
+        rain_times = None
+        rain_list = None
+        rain_ids = None
     return rain_times, rain_list, rain_ids
 
 def get_evap(data):
@@ -152,9 +156,10 @@ def get_forcings(data):
     return forcing_data
 
 def make_forcing_files(forcing_data, asynch_data, current_time):
-    current_rain = get_current_rain(forcing_data, asynch_data, current_time)
-    create_str(current_rain,asynch_data)
-    create_evap(asynch_data)
+    if asynch_data['rain_type'] == 'csv':
+        current_rain = get_current_rain(forcing_data, asynch_data, current_time)
+        create_str(current_rain,asynch_data)
+        create_evap(asynch_data)
 
 def get_current_rain(forcing_data, asynch_data, current_time):
     HOUR_IN_SECONDS = 3600
@@ -230,6 +235,14 @@ def create_gbl(n, global_params, asynch_data, current_time, time_step, num_steps
     tmp_filename =  asynch_data['tmp_folder'] + str(n) + '/' + str(n)
     gbl_filename = asynch_data['tmp_folder'] + str(n) + '.gbl'
     model_num = asynch_data['model_num']
+
+
+
+
+
+
+
+
 
     contents = read_text_file(asynch_data['gbl_sample_filename']) 
     contents[1] = str(model_num) + ' ' + str(time_step*num_steps)
@@ -359,7 +372,7 @@ def write_results(data, link_ids, link_var_num, times, asynch_data, weight=None)
             
             p_out = np.expand_dims(['%.4f' % (mean_current + std_current)],axis=1)
             out = np.expand_dims(['%.4f' % (mean_current)],axis=1)
-            m_out = np.expand_dims(['%.4f' %  np.maximum(mean_current - std_current,0)],axis=1)
+            m_out = np.expand_dims(['%.4f' %  (mean_current - std_current)],axis=1)
 
             p_out = np.hstack((np.expand_dims(times[t],1),p_out))
             out = np.hstack((np.expand_dims(times[t],1),out))

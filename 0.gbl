@@ -1,0 +1,61 @@
+%Model UID
+252 2880
+0	%Parameters to filenames
+%Components to print
+4
+State0
+State1
+State2
+State3
+%Peakflow function
+Classic
+%Global parameters
+%11 v_0 lambda_1 lambda_2 v_h  k_3       k_I_factor h_b S_L  A   B    exponent
+11 0.33 0.2 -0.1 0.02 2.0425e-06 0.02 0.5 0.1 0.0 99.0 3.0
+%No. steps stored at each link and
+%Max no. steps transfered between procs
+%Discontinuity buffer size
+30 10 30
+%Topology (0 = .rvr, 1 = database)
+0 /Users/apensoneault/python_assim_smoother/Input/NFS/south_skunk_2.rvr
+%DEM Parameters (0 = .prm, 1 = database)
+0 /Users/apensoneault/python_assim_smoother/Input/NFS/south_skunk_2.prm
+%Initial state (0 = .ini, 1 = .uini, 2 = .rec, 3 = .dbc, 4 = .h5)
+0 /nfsscratch/Users/apensoneault/SIR_4/0.ini
+%Forcings (0 = none, 1 = .str, 2 = binary, 3 = database, 4 = .ustr, 5 = forecasting, 6 = .gz binary, 7 = recurring)
+2
+%Rain
+1 /nfsscratch/Users/apensoneault/SIR_4/asynch.str
+%Evaporation
+7 /nfsscratch/Users/apensoneault/SIR_4/asynch.mon
+1459468800 1483185600
+%Dam (0 = no dam, 1 = .dam, 2 = .qvs)
+0
+%Reservoir ids (0 = no reservoirs, 1 = .rsv, 2 = .dbc file)
+0
+%Where to put write hydrographs
+%(0 = no output, 1 = .dat file, 2 = .csv file, 3 = database, 5 = .h5)
+2 60 /nfsscratch/Users/apensoneault/SIR_4/asynch.csv
+%Where to put peakflow data
+%(0 = no output, 1 = .pea file, 2 = database)
+0
+%.sav files for hydrographs and peak file
+%(0 = save no data, 1 = .sav file, 2 = .dbc file, 3 = all links)
+1 /nfsscratch/Users/apensoneault/SIR_4/asynch.sav
+0
+%Snapshot information (0 = none, 1 = .rec, 2 = database, 3 = .h5, 4 = recurrent .h5)
+0
+/nfsscratch/Users/apensoneault/SIR_4/0/0
+%Numerical solver settings follow
+%facmin, facmax, fac
+.1 10.0 .9
+%Solver flag (0 = data below, 1 = .rkd)
+0
+%Numerical solver index (0-3 explicit, 4 implicit)
+2
+%Error tolerances (abs, rel, abs dense, rel dense)
+1e-4 1e-4 1e-4 1e-4
+1e-6 1e-6 1e-6 1e-6
+1e-4 1e-4 1e-4 1e-4
+1e-6 1e-6 1e-6 1e-6
+#

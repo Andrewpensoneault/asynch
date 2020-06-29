@@ -479,6 +479,16 @@ class Assim:
             if n < ens_num:
                 del self.asynch_dict[n]
 
+    def free_asynch_dict_element(self,n):
+        ens_num = self.asynch_data['assim_params']['ens_num']
+        if n < ens_num:
+            del self.asynch_dict[n]
+
+    def make_asynch_dict_element(self,n):
+        ens_num = self.asynch_data['assim_params']['ens_num']
+        if n < ens_num:
+            self.asynch_dict[n] = asynchsolver(self.local_comm,0)
+
     def make_asynch_dict(self):
         ens_num = self.asynch_data['assim_params']['ens_num']
         asynch_dict = {}
@@ -504,7 +514,11 @@ class Assim:
 
     def write_forcings(self):
         if self.my_rank == 0:
-            make_forcing_files(self.forcings, self.asynch_data, self.current_time)
+            if self.first_time == True:
+                rain_start = self.current_time
+            else:
+                rain_start = self.current_time-60*(self.asynch_data['num_steps']-1)*self.asynch_data['step_size']
+            make_forcing_files(self.forcings, self.asynch_data, rain_start)
 
     def write_sav(self):
         if self.my_rank == 0:
@@ -514,10 +528,14 @@ class Assim:
         ens_num = self.asynch_data['assim_params']['ens_num']
         asynch_dict = {}
         link_var_num = self.asynch_data['link_var_num']
+        if self.first_time == True:
+            use_id_list = self.init_id_list
+        else:
+            use_id_list = np.array(self.asynch_data['id_list'])
         for n in self.ens_list:
             if n < ens_num:
                 n_idx = np.nonzero(self.ens_list==n)[0][0]
-                create_ini(self.asynch_data['tmp_folder']+str(n)+'.ini',self.init_id_list,link_var_num,self.asynch_data['model_num'],self.init_cond[:,n_idx])
+                create_ini(self.asynch_data['tmp_folder']+str(n)+'.ini',use_id_list,link_var_num,self.asynch_data['model_num'],self.init_cond[:,n_idx])
 
     def get_asynch_params(self,filename):
         asynch_data = get_asynch_params(filename) 
@@ -558,48 +576,47 @@ class Assim:
            self.asynch_dict = self.make_asynch_dict()
         for n in self.ens_list:
             if n < ens_num:
-                n_idx = np.nonzero(self.ens_list==n)[0][0]
-                self.asynch_dict[n].Parse_GBL(str(self.asynch_data['tmp_folder'] + str(n) + '.gbl'))
-                self.asynch_dict[n].Load_Network()
-                self.asynch_dict[n].Partition_Network()
-                self.asynch_dict[n].Load_Network_Parameters(False)
-                self.asynch_dict[n].Load_Dams()
-                self.asynch_dict[n].Load_Numerical_Error_Data()
-                self.asynch_dict[n].Initialize_Model()
-                self.asynch_dict[n].Load_Save_Lists()
-                if self.first_time == True:
+                failed = 1
+                while failed == 1:
+                    n_idx = np.nonzero(self.ens_list==n)[0][0]
+                    self.asynch_dict[n].Parse_GBL(str(self.asynch_data['tmp_folder'] + str(n) + '.gbl'))
+                    self.asynch_dict[n].Load_Network()
+                    self.asynch_dict[n].Partition_Network()
+                    self.asynch_dict[n].Load_Network_Parameters(False)
+                    self.asynch_dict[n].Load_Dams()
+                    self.asynch_dict[n].Load_Numerical_Error_Data()
+                    self.asynch_dict[n].Initialize_Model()
+                    self.asynch_dict[n].Load_Save_Lists()
                     self.asynch_dict[n].Load_Initial_Conditions()
-                self.asynch_dict[n].Load_Forcings()
-                self.asynch_dict[n].Finalize_Network()
-                self.asynch_dict[n].Calculate_Step_Sizes()
-                self.asynch_dict[n].Prepare_Output()
-                self.asynch_dict[n].Prepare_Temp_Files()
-                if self.first_time != True:
-                    init_next = self.init_cond 
-                    param_next = self.global_params
-                    link_var_num = self.asynch_data['link_var_num']
-                    init = [[init_next[k+j*link_var_num,n_idx] for k in range(link_var_num)] for j in range(num_link)]
-                    self.asynch_dict[n].Set_System_State(0,init)
-                    self.asynch_dict[n].Set_Global_Parameters(param_next[:,n_idx].tolist()) 
-                self.asynch_dict[n].Advance(True)
-                ptr = self.asynch_dict[n].Create_Local_Output(None,buffer_size)
-                output_string = cast(ptr,c_char_p).value
-                self.asynch_dict[n].Free_Local_Output(cast(ptr,c_char_p))
-                self.asynch_dict[n].Free_OutputUser_Data()
-                parameters = np.expand_dims(np.array(self.asynch_dict[n].Get_Global_Parameters()[0]),1)
-                outarray = np.fromstring(output_string,sep=',')[:-1] #removes extra comma introduced in writing csv
-                if len(outarray) == (num_steps+1)*link_var_num*num_link:
-                    outvec = np.reshape(outarray,(num_steps+1,-1))
-                    outvec = outvec[1:,:].flatten()
-                elif len(outarray) == (num_steps)*link_var_num*num_link:
-                    outvec = np.reshape(outarray,(num_steps,-1)).flatten()
-                else:
-                    raise ValueError('Incorrect size of output, size='+str(len(outarray)))
-                outvec = np.expand_dims(outvec,1)
-                outvec = self.perturb(outvec,types='var')
-                parameters = self.perturb(parameters,types='params')
-                state_out[:,n_idx] = np.concatenate((outvec,parameters)).flatten()
-                self.asynch_dict[n].Free_OutputUser_Data()
+                    self.asynch_dict[n].Load_Forcings()
+                    self.asynch_dict[n].Finalize_Network()
+                    self.asynch_dict[n].Calculate_Step_Sizes()
+                    self.asynch_dict[n].Prepare_Output()
+                    self.asynch_dict[n].Prepare_Temp_Files()
+                    self.asynch_dict[n].Advance(True)
+                    ptr = self.asynch_dict[n].Create_Local_Output(None,buffer_size)
+                    output_string = cast(ptr,c_char_p).value
+                    self.asynch_dict[n].Free_Local_Output(cast(ptr,c_char_p))
+                    self.asynch_dict[n].Free_OutputUser_Data()
+                    parameters = np.expand_dims(np.array(self.asynch_dict[n].Get_Global_Parameters()[0]),1)
+                    outarray = np.fromstring(output_string,sep=',')[:-1] #removes extra comma introduced in writing csv
+                    self.asynch_dict[n].Free_OutputUser_Data()
+                    if len(outarray) == (num_steps+1)*link_var_num*num_link:
+                        outvec = np.reshape(outarray,(num_steps+1,-1))
+                        outvec = outvec[1:,:].flatten()
+                        failed = 0
+                    elif len(outarray) == (num_steps)*link_var_num*num_link:
+                        outvec = np.reshape(outarray,(num_steps,-1)).flatten()
+                        failed = 0
+                    else:
+                        self.free_asynch_dict_element(n)
+                        self.make_asynch_dict_element(n)
+                        print('Incorrect size of output in run ' + str(n) + ', size='+str(len(outarray))+', retrying')
+                        continue
+                    outvec = np.expand_dims(outvec,1)
+                    outvec = self.perturb(outvec,types='var')
+                    parameters = self.perturb(parameters,types='params')
+                    state_out[:,n_idx] = np.concatenate((outvec,parameters)).flatten()
         self.advance_time()
         return state_out
 

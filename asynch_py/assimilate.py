@@ -51,6 +51,7 @@ class particle():
 
 class no_assimilate():
     def __init__(self,data):
+        self.ens_num = data['ens_num']
         self.weights = np.ones((1,self.ens_num))/self.ens_num
     def assimilate(self,state_data,assim_data,measure):
         return state_data

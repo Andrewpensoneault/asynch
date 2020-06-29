@@ -1,4 +1,0 @@
-Date: 2016-04-01 00:00:00, Time to run: 1.00135803223e-05 seconds
---------------------------------------------------------------------------
-mpiexec noticed that process rank 1 with PID 0 on node argon-lc-g11-19 exited on signal 11 (Segmentation fault).
---------------------------------------------------------------------------

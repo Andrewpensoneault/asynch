@@ -1,4 +1,0 @@
---------------------------------------------------------------------------
-mpiexec noticed that process rank 33 with PID 30454 on node argon-itf-cf46-32 exited on signal 11 (Segmentation fault).
---------------------------------------------------------------------------
-2 total processes killed (some possibly by mpiexec during cleanup)
